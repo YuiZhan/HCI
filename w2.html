@@ -1,255 +1,387 @@
-import React, { useState, useEffect } from 'react';
-import { CreditCard, Globe, Plane, Coffee, ShoppingBag, Utensils, RefreshCw, CheckCircle, Wallet } from 'lucide-react';
-
-// 模擬匯率與國家資料
-const COUNTRIES = [
-  { id: 'TW', name: '台灣', currency: 'TWD', rate: 1, icon: '🇹🇼', greeting: '祝您有美好的一天！', theme: 'from-green-400 to-blue-500' },
-  { id: 'JP', name: '日本', currency: 'JPY', rate: 0.21, icon: '🇯🇵', greeting: '旅途愉快！楽しんで！', theme: 'from-red-400 to-pink-500' },
-  { id: 'US', name: '美國', currency: 'USD', rate: 31.5, icon: '🇺🇸', greeting: 'Have a nice trip!', theme: 'from-blue-600 to-red-500' },
-  { id: 'KR', name: '韓國', currency: 'KRW', rate: 0.024, icon: '🇰🇷', greeting: '祝您購物愉快！', theme: 'from-blue-400 to-red-400' },
-  { id: 'EU', name: '歐洲', currency: 'EUR', rate: 34.2, icon: '🇪🇺', greeting: '享受浪漫時光！', theme: 'from-blue-500 to-yellow-400' },
-];
-
-// 隨機消費項目產生器
-const SCENARIOS = [
-  { type: 'transport', label: '地鐵搭乘', icon: <Plane className="w-6 h-6" />, baseTwd: 45 },
-  { type: 'food', label: '便利商店', icon: <Coffee className="w-6 h-6" />, baseTwd: 120 },
-  { type: 'shopping', label: '伴手禮店', icon: <ShoppingBag className="w-6 h-6" />, baseTwd: 850 },
-  { type: 'dining', label: '特色餐廳', icon: <Utensils className="w-6 h-6" />, baseTwd: 450 },
-];
-
-export default function GlobalEasyCard() {
-  const [currentCountry, setCurrentCountry] = useState(COUNTRIES[0]);
-  const [balance, setBalance] = useState(5000); // 初始餘額 TWD
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [transaction, setTransaction] = useState(null);
-
-  // 格式化貨幣顯示
-  const formatCurrency = (amount, currency) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  };
-
-  // 處理支付模擬
-  const handlePayment = () => {
-    if (isProcessing) return;
-    setIsProcessing(true);
-
-    // 1. 隨機選擇一個消費場景
-    const scenario = SCENARIOS[Math.floor(Math.random() * SCENARIOS.length)];
-    
-    // 2. 計算金額 (加入一些隨機波動)
-    const randomFactor = 0.8 + Math.random() * 0.4; // 0.8 ~ 1.2
-    const twdAmount = Math.round(scenario.baseTwd * randomFactor);
-    const localAmount = twdAmount / currentCountry.rate;
-
-    // 3. 模擬網路延遲
-    setTimeout(() => {
-      setBalance(prev => prev - twdAmount);
-      setTransaction({
-        ...scenario,
-        localAmount,
-        twdAmount,
-        country: currentCountry
-      });
-      setIsProcessing(false);
-      setShowFeedback(true);
-    }, 1200);
-  };
-
-  // 關閉 Feedback 視窗
-  const closeFeedback = () => {
-    setShowFeedback(false);
-    setTransaction(null);
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 font-sans text-slate-800">
-      
-      {/* 頂部導航 */}
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-sm p-4 mb-6 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <div className="bg-blue-100 p-2 rounded-full text-blue-600">
-            <Globe size={20} />
-          </div>
-          <div>
-            <p className="text-xs text-gray-500">目前位置</p>
-            <h2 className="font-bold text-gray-800 flex items-center gap-1">
-              {currentCountry.icon} {currentCountry.name}
-            </h2>
-          </div>
-        </div>
-        <div className="text-right">
-          <p className="text-xs text-gray-500">即時匯率</p>
-          <p className="font-mono text-sm font-medium text-gray-600">
-            1 {currentCountry.currency} ≈ {currentCountry.rate < 1 ? currentCountry.rate.toFixed(3) : currentCountry.rate.toFixed(1)} TWD
-          </p>
-        </div>
-      </div>
-
-      {/* 數位卡片區 */}
-      <div className="relative w-full max-w-md aspect-[1.586/1] mb-8 perspective-1000 group cursor-pointer" onClick={handlePayment}>
-        <div className={`absolute inset-0 rounded-2xl shadow-xl transition-all duration-500 transform ${isProcessing ? 'scale-95 brightness-90' : 'hover:scale-105'} overflow-hidden bg-gradient-to-br from-slate-900 to-slate-700`}>
-          
-          {/* 卡片背景裝飾 - 模擬悠遊卡四色意象 */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-green-400 rounded-full mix-blend-overlay filter blur-3xl opacity-20 translate-x-10 -translate-y-10"></div>
-          <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500 rounded-full mix-blend-overlay filter blur-3xl opacity-20 -translate-x-10 translate-y-10"></div>
-          
-          {/* 卡片內容 */}
-          <div className="relative z-10 p-6 flex flex-col justify-between h-full text-white">
-            <div className="flex justify-between items-start">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
-                  <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-green-300 to-blue-300"></div>
-                </div>
-                <span className="font-bold tracking-wider opacity-90">EasyCard Global</span>
-              </div>
-              <div className="bg-white/10 backdrop-blur-md px-3 py-1 rounded-full text-xs border border-white/20">
-                Contactless
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <p className="text-xs text-gray-300 font-medium">可用餘額 (TWD)</p>
-              <h1 className="text-3xl font-mono font-bold tracking-tight">
-                ${balance.toLocaleString()}
-              </h1>
-            </div>
-
-            <div className="flex justify-between items-end">
-              <p className="font-mono text-sm opacity-60">8888 1234 5678 9000</p>
-              {isProcessing && (
-                <div className="flex gap-1 animate-pulse">
-                  <span className="w-2 h-2 bg-white rounded-full"></span>
-                  <span className="w-2 h-2 bg-white rounded-full"></span>
-                  <span className="w-2 h-2 bg-white rounded-full"></span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        {/* 感應提示 - 僅在閒置時顯示 */}
-        {!isProcessing && !showFeedback && (
-          <div className="absolute -bottom-8 left-0 right-0 text-center text-sm text-gray-400 animate-bounce">
-            點擊卡片感應支付 (Tap to Pay)
-          </div>
-        )}
-      </div>
-
-      {/* 國家切換器 */}
-      <div className="w-full max-w-md">
-        <p className="text-sm text-gray-500 mb-3 ml-1 font-medium">切換國家模擬消費</p>
-        <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar touch-pan-x">
-          {COUNTRIES.map((country) => (
-            <button
-              key={country.id}
-              onClick={() => setCurrentCountry(country)}
-              className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl border transition-all duration-200 ${
-                currentCountry.id === country.id
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'
-              }`}
-            >
-              <span className="text-xl">{country.icon}</span>
-              <span className="font-medium">{country.name}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* 底部操作區 */}
-      <div className="mt-auto w-full max-w-md grid grid-cols-2 gap-4">
-        <button 
-          onClick={() => setBalance(5000)}
-          className="flex items-center justify-center gap-2 bg-white p-4 rounded-2xl text-gray-600 hover:bg-gray-50 transition border border-gray-100 shadow-sm"
-        >
-          <RefreshCw size={18} />
-          重置餘額
-        </button>
-        <div className="flex items-center justify-center gap-2 bg-white p-4 rounded-2xl text-gray-600 border border-gray-100 shadow-sm opacity-60 cursor-not-allowed">
-          <Wallet size={18} />
-          加值紀錄
-        </div>
-      </div>
-
-      {/* 支付成功 Feedback Modal */}
-      {showFeedback && transaction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl transform transition-all animate-in zoom-in-95 duration-300 relative overflow-hidden">
-            
-            {/* 背景氛圍光 */}
-            <div className={`absolute top-0 left-0 right-0 h-32 bg-gradient-to-b ${transaction.country.theme} opacity-10`}></div>
-            
-            <div className="relative z-10 flex flex-col items-center text-center">
-              {/* 成功動畫圖示 */}
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-500 mb-4 shadow-sm ring-4 ring-white animate-bounce">
-                <CheckCircle size={32} strokeWidth={3} />
-              </div>
-              
-              <h2 className="text-2xl font-bold text-gray-800 mb-1">支付成功！</h2>
-              <p className="text-sm text-gray-500 mb-6">{transaction.country.greeting}</p>
-              
-              {/* 交易詳情卡 */}
-              <div className="w-full bg-gray-50 rounded-2xl p-4 mb-6 border border-gray-100">
-                <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-200">
-                  <div className={`p-3 rounded-full bg-white shadow-sm text-blue-500`}>
-                    {transaction.icon}
-                  </div>
-                  <div className="text-left flex-1">
-                    <p className="font-bold text-gray-800">{transaction.label}</p>
-                    <p className="text-xs text-gray-400 text-nowrap">{new Date().toLocaleString()}</p>
-                  </div>
-                </div>
-
-                {/* 雙幣顯示核心區 */}
-                <div className="flex justify-between items-end mb-2">
-                  <span className="text-gray-500 text-sm">當地金額</span>
-                  <span className="text-xl font-bold text-gray-800 font-mono">
-                    {formatCurrency(transaction.localAmount, transaction.country.currency)}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-500 text-sm flex items-center gap-1">
-                    <img src="https://flagcdn.com/w20/tw.png" alt="TW" className="w-4 rounded-sm shadow-sm" />
-                    台幣扣款
-                  </span>
-                  <span className="text-lg font-bold text-blue-600 font-mono bg-blue-50 px-2 py-1 rounded-lg">
-                    -NT${Math.abs(transaction.twdAmount)}
-                  </span>
-                </div>
-              </div>
-
-              <button 
-                onClick={closeFeedback}
-                className="w-full bg-gray-900 text-white py-4 rounded-xl font-bold hover:bg-gray-800 transition active:scale-95"
-              >
-                完成
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <style dangerouslySetInnerHTML={{__html: `
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全球通數位悠遊卡</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
         .perspective-1000 {
-          perspective: 1000px;
+            perspective: 1000px;
         }
         /* 隱藏滾動條但保持功能 */
         .no-scrollbar::-webkit-scrollbar {
-          display: none;
+            display: none;
         }
         .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
-      `}} />
+        /* 自定義動畫 */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes zoomIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.2s ease-out forwards;
+        }
+        .animate-zoom-in {
+            animation: zoomIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 font-sans text-slate-800 select-none">
+
+    <!-- 頂部導航 -->
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-sm p-4 mb-6 flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <div class="bg-blue-100 p-2 rounded-full text-blue-600">
+                <i data-lucide="globe" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500">目前位置</p>
+                <h2 id="current-location-display" class="font-bold text-gray-800 flex items-center gap-1">
+                    <!-- Javascript will populate this -->
+                </h2>
+            </div>
+        </div>
+        <div class="text-right">
+            <p class="text-xs text-gray-500">即時匯率</p>
+            <p id="exchange-rate-display" class="font-mono text-sm font-medium text-gray-600">
+                <!-- Javascript will populate this -->
+            </p>
+        </div>
     </div>
-  );
-}
+
+    <!-- 數位卡片區 -->
+    <div id="card-container" class="relative w-full max-w-md aspect-[1.586/1] mb-8 perspective-1000 group cursor-pointer">
+        <div id="card-inner" class="absolute inset-0 rounded-2xl shadow-xl transition-all duration-500 transform hover:scale-105 overflow-hidden bg-gradient-to-br from-slate-900 to-slate-700">
+            
+            <!-- 卡片背景裝飾 -->
+            <div class="absolute top-0 right-0 w-64 h-64 bg-green-400 rounded-full mix-blend-overlay filter blur-3xl opacity-20 translate-x-10 -translate-y-10"></div>
+            <div class="absolute bottom-0 left-0 w-64 h-64 bg-blue-500 rounded-full mix-blend-overlay filter blur-3xl opacity-20 -translate-x-10 translate-y-10"></div>
+            
+            <!-- 卡片內容 -->
+            <div class="relative z-10 p-6 flex flex-col justify-between h-full text-white">
+                <div class="flex justify-between items-start">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
+                            <div class="w-4 h-4 rounded-full bg-gradient-to-tr from-green-300 to-blue-300"></div>
+                        </div>
+                        <span class="font-bold tracking-wider opacity-90">EasyCard Global</span>
+                    </div>
+                    <div class="bg-white/10 backdrop-blur-md px-3 py-1 rounded-full text-xs border border-white/20">
+                        Contactless
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <p class="text-xs text-gray-300 font-medium">可用餘額 (TWD)</p>
+                    <h1 id="balance-display" class="text-3xl font-mono font-bold tracking-tight">
+                        $5,000
+                    </h1>
+                </div>
+
+                <div class="flex justify-between items-end">
+                    <p class="font-mono text-sm opacity-60">8888 1234 5678 9000</p>
+                    <div id="processing-dots" class="flex gap-1 animate-pulse opacity-0 transition-opacity duration-200">
+                        <span class="w-2 h-2 bg-white rounded-full"></span>
+                        <span class="w-2 h-2 bg-white rounded-full"></span>
+                        <span class="w-2 h-2 bg-white rounded-full"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 感應提示 -->
+        <div id="tap-hint" class="absolute -bottom-8 left-0 right-0 text-center text-sm text-gray-400 animate-bounce transition-opacity duration-300">
+            點擊卡片感應支付 (Tap to Pay)
+        </div>
+    </div>
+
+    <!-- 國家切換器 -->
+    <div class="w-full max-w-md">
+        <p class="text-sm text-gray-500 mb-3 ml-1 font-medium">切換國家模擬消費</p>
+        <div id="country-list" class="flex gap-3 overflow-x-auto pb-4 no-scrollbar touch-pan-x">
+            <!-- JS will populate buttons here -->
+        </div>
+    </div>
+
+    <!-- 底部操作區 -->
+    <div class="mt-auto w-full max-w-md grid grid-cols-2 gap-4">
+        <button id="reset-btn" class="flex items-center justify-center gap-2 bg-white p-4 rounded-2xl text-gray-600 hover:bg-gray-50 transition border border-gray-100 shadow-sm active:scale-95">
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+            重置餘額
+        </button>
+        <div class="flex items-center justify-center gap-2 bg-white p-4 rounded-2xl text-gray-600 border border-gray-100 shadow-sm opacity-60 cursor-not-allowed">
+            <i data-lucide="wallet" class="w-4 h-4"></i>
+            加值紀錄
+        </div>
+    </div>
+
+    <!-- 支付成功 Modal -->
+    <div id="feedback-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl transform animate-zoom-in relative overflow-hidden">
+            
+            <!-- 背景氛圍光 (動態改變顏色) -->
+            <div id="modal-bg-gradient" class="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b opacity-10"></div>
+            
+            <div class="relative z-10 flex flex-col items-center text-center">
+                <!-- 成功動畫圖示 -->
+                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-500 mb-4 shadow-sm ring-4 ring-white animate-bounce">
+                    <i data-lucide="check-circle" class="w-8 h-8"></i>
+                </div>
+                
+                <h2 class="text-2xl font-bold text-gray-800 mb-1">支付成功！</h2>
+                <p id="modal-greeting" class="text-sm text-gray-500 mb-6">祝您旅途愉快！</p>
+                
+                <!-- 交易詳情卡 -->
+                <div class="w-full bg-gray-50 rounded-2xl p-4 mb-6 border border-gray-100">
+                    <div class="flex items-center gap-3 mb-4 pb-4 border-b border-gray-200">
+                        <div id="transaction-icon-container" class="p-3 rounded-full bg-white shadow-sm text-blue-500">
+                            <!-- JS icon -->
+                        </div>
+                        <div class="text-left flex-1">
+                            <p id="transaction-label" class="font-bold text-gray-800">消費項目</p>
+                            <p id="transaction-time" class="text-xs text-gray-400 text-nowrap">時間</p>
+                        </div>
+                    </div>
+
+                    <!-- 雙幣顯示核心區 -->
+                    <div class="flex justify-between items-end mb-2">
+                        <span class="text-gray-500 text-sm">當地金額</span>
+                        <span id="transaction-local-amount" class="text-xl font-bold text-gray-800 font-mono">
+                            $0
+                        </span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-500 text-sm flex items-center gap-1">
+                            <img src="https://flagcdn.com/w20/tw.png" alt="TW" class="w-4 rounded-sm shadow-sm" />
+                            台幣扣款
+                        </span>
+                        <span id="transaction-twd-amount" class="text-lg font-bold text-blue-600 font-mono bg-blue-50 px-2 py-1 rounded-lg">
+                            -NT$0
+                        </span>
+                    </div>
+                </div>
+
+                <button id="close-modal-btn" class="w-full bg-gray-900 text-white py-4 rounded-xl font-bold hover:bg-gray-800 transition active:scale-95">
+                    完成
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 資料設定
+        const COUNTRIES = [
+            { id: 'TW', name: '台灣', currency: 'TWD', rate: 1, icon: '🇹🇼', greeting: '祝您有美好的一天！', theme: 'from-green-400 to-blue-500' },
+            { id: 'JP', name: '日本', currency: 'JPY', rate: 0.21, icon: '🇯🇵', greeting: '旅途愉快！楽しんで！', theme: 'from-red-400 to-pink-500' },
+            { id: 'US', name: '美國', currency: 'USD', rate: 31.5, icon: '🇺🇸', greeting: 'Have a nice trip!', theme: 'from-blue-600 to-red-500' },
+            { id: 'KR', name: '韓國', currency: 'KRW', rate: 0.024, icon: '🇰🇷', greeting: '祝您購物愉快！', theme: 'from-blue-400 to-red-400' },
+            { id: 'EU', name: '歐洲', currency: 'EUR', rate: 34.2, icon: '🇪🇺', greeting: '享受浪漫時光！', theme: 'from-blue-500 to-yellow-400' },
+        ];
+
+        const SCENARIOS = [
+            { type: 'transport', label: '地鐵搭乘', iconName: 'plane', baseTwd: 45 },
+            { type: 'food', label: '便利商店', iconName: 'coffee', baseTwd: 120 },
+            { type: 'shopping', label: '伴手禮店', iconName: 'shopping-bag', baseTwd: 850 },
+            { type: 'dining', label: '特色餐廳', iconName: 'utensils', baseTwd: 450 },
+        ];
+
+        // 狀態變數
+        let state = {
+            currentCountry: COUNTRIES[0],
+            balance: 5000,
+            isProcessing: false
+        };
+
+        // DOM 元素引用
+        const els = {
+            locationDisplay: document.getElementById('current-location-display'),
+            exchangeRateDisplay: document.getElementById('exchange-rate-display'),
+            balanceDisplay: document.getElementById('balance-display'),
+            cardContainer: document.getElementById('card-container'),
+            cardInner: document.getElementById('card-inner'),
+            processingDots: document.getElementById('processing-dots'),
+            tapHint: document.getElementById('tap-hint'),
+            countryList: document.getElementById('country-list'),
+            modal: document.getElementById('feedback-modal'),
+            modalBg: document.getElementById('modal-bg-gradient'),
+            modalGreeting: document.getElementById('modal-greeting'),
+            transIconContainer: document.getElementById('transaction-icon-container'),
+            transLabel: document.getElementById('transaction-label'),
+            transTime: document.getElementById('transaction-time'),
+            transLocalAmount: document.getElementById('transaction-local-amount'),
+            transTwdAmount: document.getElementById('transaction-twd-amount'),
+            closeModalBtn: document.getElementById('close-modal-btn'),
+            resetBtn: document.getElementById('reset-btn')
+        };
+
+        // 初始化
+        function init() {
+            renderCountryList();
+            updateDashboard();
+            lucide.createIcons(); // 初始化圖示
+            
+            // 綁定事件
+            els.cardContainer.addEventListener('click', handlePayment);
+            els.closeModalBtn.addEventListener('click', closeModal);
+            els.resetBtn.addEventListener('click', resetBalance);
+        }
+
+        // 渲染國家列表按鈕
+        function renderCountryList() {
+            els.countryList.innerHTML = COUNTRIES.map(country => `
+                <button 
+                    onclick="changeCountry('${country.id}')"
+                    class="country-btn flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl border transition-all duration-200 ${
+                        state.currentCountry.id === country.id
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'
+                    }"
+                    id="btn-${country.id}"
+                >
+                    <span class="text-xl">${country.icon}</span>
+                    <span class="font-medium">${country.name}</span>
+                </button>
+            `).join('');
+        }
+
+        // 切換國家
+        window.changeCountry = (id) => {
+            if (state.isProcessing) return;
+            state.currentCountry = COUNTRIES.find(c => c.id === id);
+            renderCountryList();
+            updateDashboard();
+        };
+
+        // 更新介面資訊
+        function updateDashboard() {
+            const { currentCountry, balance } = state;
+            
+            // 更新地點
+            els.locationDisplay.innerHTML = `${currentCountry.icon} ${currentCountry.name}`;
+            
+            // 更新匯率
+            const rateDisplay = currentCountry.rate < 1 ? currentCountry.rate.toFixed(3) : currentCountry.rate.toFixed(1);
+            els.exchangeRateDisplay.textContent = `1 ${currentCountry.currency} ≈ ${rateDisplay} TWD`;
+
+            // 更新餘額
+            els.balanceDisplay.textContent = `$${balance.toLocaleString()}`;
+        }
+
+        // 處理支付模擬
+        function handlePayment() {
+            if (state.isProcessing) return;
+            
+            startProcessing();
+
+            // 1. 隨機選擇場景
+            const scenario = SCENARIOS[Math.floor(Math.random() * SCENARIOS.length)];
+
+            // 2. 計算金額
+            const randomFactor = 0.8 + Math.random() * 0.4;
+            const twdAmount = Math.round(scenario.baseTwd * randomFactor);
+            const localAmount = twdAmount / state.currentCountry.rate;
+
+            // 3. 模擬延遲
+            setTimeout(() => {
+                state.balance -= twdAmount;
+                stopProcessing();
+                updateDashboard();
+                showFeedback({
+                    ...scenario,
+                    twdAmount,
+                    localAmount,
+                    country: state.currentCountry
+                });
+            }, 1200);
+        }
+
+        function startProcessing() {
+            state.isProcessing = true;
+            els.cardInner.classList.add('scale-95', 'brightness-90');
+            els.cardInner.classList.remove('hover:scale-105');
+            els.processingDots.classList.remove('opacity-0');
+            els.tapHint.classList.add('opacity-0');
+        }
+
+        function stopProcessing() {
+            state.isProcessing = false;
+            els.cardInner.classList.remove('scale-95', 'brightness-90');
+            els.cardInner.classList.add('hover:scale-105');
+            els.processingDots.classList.add('opacity-0');
+            els.tapHint.classList.remove('opacity-0');
+        }
+
+        // 格式化貨幣
+        function formatCurrency(amount, currency) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: currency,
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 2,
+            }).format(amount);
+        }
+
+        // 顯示 Feedback Modal
+        function showFeedback(transaction) {
+            // 設定背景漸層
+            els.modalBg.className = `absolute top-0 left-0 right-0 h-32 bg-gradient-to-b ${transaction.country.theme} opacity-10`;
+            
+            // 設定問候語
+            els.modalGreeting.textContent = transaction.country.greeting;
+            
+            // 設定 Icon (使用 Lucide 生成 SVG)
+            const iconSvg = lucide.icons[kebabToCamel(transaction.iconName)].toSvg({ class: "w-6 h-6" });
+            els.transIconContainer.innerHTML = iconSvg;
+            
+            // 設定文字資訊
+            els.transLabel.textContent = transaction.label;
+            els.transTime.textContent = new Date().toLocaleString();
+            
+            // 設定金額
+            els.transLocalAmount.textContent = formatCurrency(transaction.localAmount, transaction.country.currency);
+            els.transTwdAmount.textContent = `-NT$${Math.abs(transaction.twdAmount)}`;
+
+            // 顯示 Modal
+            els.modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            els.modal.classList.add('hidden');
+        }
+
+        function resetBalance() {
+            state.balance = 5000;
+            updateDashboard();
+            // 添加簡單的視覺回饋
+            const btn = els.resetBtn;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> 已重置`;
+            lucide.createIcons();
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                lucide.createIcons();
+            }, 1000);
+        }
+
+        // Helper: 將 kebab-case 轉為 PascalCase (for Lucide keys)
+        // 例如: shopping-bag -> ShoppingBag
+        function kebabToCamel(s) {
+            return s.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
+        }
+
+        // 啟動
+        init();
+
+    </script>
+</body>
+</html>
