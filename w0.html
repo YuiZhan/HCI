@@ -22,42 +22,44 @@
         /* 滑軌 (Track) */
         input[type=range]::-webkit-slider-runnable-track {
             width: 100%;
-            height: 8px;
+            height: 12px;
             cursor: pointer;
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
             backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
         input[type=range]::-moz-range-track {
             width: 100%;
-            height: 8px;
+            height: 12px;
             cursor: pointer;
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         /* 滑塊 (Thumb) */
         input[type=range]::-webkit-slider-thumb {
-            height: 24px;
-            width: 24px;
+            height: 32px;
+            width: 32px;
             border-radius: 50%;
             background: #ffffff;
             cursor: pointer;
             -webkit-appearance: none;
-            margin-top: -8px; /* 修正垂直置中 */
-            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            margin-top: -11px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             transition: transform 0.1s;
         }
 
         input[type=range]::-moz-range-thumb {
-            height: 24px;
-            width: 24px;
+            height: 32px;
+            width: 32px;
             border: none;
             border-radius: 50%;
             background: #ffffff;
             cursor: pointer;
-            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             transition: transform 0.1s;
         }
 
@@ -65,24 +67,71 @@
             transform: scale(1.2);
         }
 
-        /* 內容容器過渡動畫 */
         .content-wrapper {
             transition: transform 0.3s ease-out;
         }
         
-        /* 避免選取文字影響體驗 */
         .noselect {
             user-select: none;
             -webkit-user-select: none;
+        }
+
+        /* 靜態背景元素樣式 */
+        .creative-item {
+            position: absolute;
+            pointer-events: none;
+            z-index: 0;
+            transition: opacity 0.1s linear, transform 0.1s linear; 
+        }
+
+        /* 動態粒子動畫 - 優化過渡，避免閃爍 */
+        @keyframes floatUpSmooth {
+            0% { 
+                transform: translateY(0) scale(0.5) rotate(0deg); 
+                opacity: 0; 
+            }
+            10% { 
+                opacity: 0.6; 
+            }
+            80% {
+                opacity: 0.6;
+            }
+            100% { 
+                transform: translateY(-120vh) scale(1.2) rotate(360deg); 
+                opacity: 0; 
+            }
+        }
+
+        .dynamic-particle {
+            position: absolute;
+            bottom: -10vh; /* 統一從畫面下方生成 */
+            pointer-events: none;
+            z-index: 0;
         }
     </style>
 </head>
 <body class="h-screen w-full overflow-hidden flex flex-col items-center justify-center transition-colors duration-75 noselect" id="appBody">
 
+    <!-- 靜態創意背景元素 (保留，作為基礎層次) -->
+    <div id="creative-bg-container" class="absolute inset-0 overflow-hidden pointer-events-none">
+        <svg class="creative-item text-yellow-300 fill-current" style="top: 15%; left: 10%; width: 80px;" viewBox="0 0 24 24"><path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/></svg>
+        <svg class="creative-item text-pink-300 fill-current" style="top: 25%; right: 15%; width: 60px;" viewBox="0 0 24 24"><path d="M7 14c-1.66 0-3 1.34-3 3 0 1.31-1.16 2-2 2 .92 1.22 2.49 2 4 2 2.21 0 4-1.79 4-4 0-1.66-1.34-3-3-3zm13.71-9.37l-1.34-1.34a.996.996 0 0 0-1.41 0L9 12.25 11.75 15l8.96-8.96a.996.996 0 0 0 0-1.41z"/></svg>
+        <svg class="creative-item text-red-300 fill-current" style="bottom: 20%; left: 15%; width: 90px;" viewBox="0 0 24 24"><path d="M12 2.5c4.97 0 9 4.03 9 9s-4.03 9-9 9-9-4.03-9-9 4.03-9 9-9m0-2C5.93.5.5 5.93.5 12S5.93 23.5 12 23.5 23.5 18.07 23.5 12 18.07.5 12 .5z M12 17l1.5-4h-3L12 17zm0-13l-4 8h8l-4-8z"/></svg>
+        <svg class="creative-item text-yellow-200 fill-current" style="top: 10%; right: 30%; width: 40px;" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+        <svg class="creative-item text-green-300 fill-current" style="bottom: 15%; right: 10%; width: 70px;" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+        <svg class="creative-item text-blue-300 fill-current" style="top: 40%; left: 5%; width: 50px;" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+        <svg class="creative-item text-cyan-300 fill-current" style="top: 5%; left: 45%; width: 45px;" viewBox="0 0 24 24"><path d="M12.16 3h-.32L9.21 8.25h5.58L12.16 3zm1.69-1.01L15.48 8.25h3.69l-5.32-6.26zM7.21 3.56L4.83 8.25h3.69L7.21 3.56zM4.42 9.75l7.15 11.02 .43.66 .43-.66 7.15-11.02H4.42z"/></svg>
+        <svg class="creative-item text-purple-300 fill-current" style="bottom: 5%; left: 40%; width: 50px;" viewBox="0 0 24 24"><path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z"/></svg>
+        <svg class="creative-item text-orange-300 fill-current" style="top: 60%; right: 25%; width: 65px;" viewBox="0 0 24 24"><path d="M12 2C6.49 2 2 6.49 2 12s4.49 10 10 10c1.38 0 2.5-1.12 2.5-2.5 0-.61-.23-1.21-.64-1.67-.08-.1-.13-.21-.13-.33 0-.28.22-.5.5-.5H16c3.31 0 6-2.69 6-6 0-4.96-4.49-9-10-9zm5.5 11c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm-3-4c-.83 0-1.5-.67-1.5-1.5S13.67 6 14.5 6s1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm-5 0c-.83 0-1.5-.67-1.5-1.5S9.67 6 10.5 6s1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm-3 4c-.83 0-1.5-.67-1.5-1.5S7.67 10 8.5 10s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+        <svg class="creative-item text-teal-200 fill-current" style="top: 35%; left: 25%; width: 30px;" viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+        <svg class="creative-item text-pink-400 fill-current" style="bottom: 50%; left: 10%; width: 35px;" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+    </div>
+
+    <!-- 動態粒子容器 -->
+    <div id="dynamic-particles-container" class="absolute inset-0 overflow-hidden pointer-events-none"></div>
+
     <!-- 主要內容區塊 -->
-    <div class="content-wrapper text-center w-full max-w-md px-8 relative z-10">
-        
-        <!-- 標題區域 -->
+    <div class="content-wrapper text-center w-full max-w-3xl px-8 relative z-10">
         <h1 id="mainTitle" class="text-4xl md:text-5xl font-bold mb-2 tracking-wider transition-all duration-300 text-white drop-shadow-md">
             SURVIVAL
         </h1>
@@ -90,22 +139,17 @@
             限制與壓力
         </p>
 
-        <!-- 圖示顯示區域 -->
         <div class="h-40 flex items-center justify-center mb-8 relative">
-            <!-- Survival Icon (Ghost) -->
             <div id="iconSurvival" class="absolute transform transition-transform duration-100">
                 <i class="fa-solid fa-ghost text-7xl md:text-8xl text-gray-300 drop-shadow-lg"></i>
-                <!-- 額外的氛圍裝飾：枷鎖/石頭 -->
                 <div class="mt-4 flex justify-center space-x-2 opacity-50">
                     <i class="fa-solid fa-link text-xl"></i>
                     <i class="fa-solid fa-weight-hanging text-xl"></i>
                 </div>
             </div>
 
-            <!-- Creative Icon (Plane/Feather) -->
             <div id="iconCreative" class="absolute transform transition-transform duration-100 opacity-0 scale-50">
                 <i class="fa-solid fa-paper-plane text-7xl md:text-8xl text-white drop-shadow-lg"></i>
-                 <!-- 額外的氛圍裝飾：星星/雲朵 -->
                  <div class="mt-4 flex justify-center space-x-4 opacity-80 text-yellow-200">
                     <i class="fa-solid fa-star text-xl animate-pulse"></i>
                     <i class="fa-solid fa-cloud text-xl text-white"></i>
@@ -113,19 +157,19 @@
             </div>
         </div>
 
-        <!-- 滑桿控制項 -->
         <div class="relative w-full mb-4 group">
-            <div class="flex justify-between text-xs text-white opacity-70 mb-2 font-mono uppercase tracking-widest">
+            <div class="flex justify-between text-xs text-white opacity-70 mb-2 font-mono uppercase tracking-widest px-1">
                 <span>Survival</span>
                 <span>Creative</span>
             </div>
-            <input type="range" id="modeSlider" min="0" max="100" value="0" class="w-full">
+            <div class="py-2">
+                <input type="range" id="modeSlider" min="0" max="100" value="0" class="w-full">
+            </div>
         </div>
         
         <p class="text-white text-xs opacity-50 mt-4">拖曳滑桿以改變現實</p>
     </div>
 
-    <!-- 背景粒子效果 (簡單模擬) -->
     <div id="particles" class="absolute inset-0 pointer-events-none opacity-30 z-0"></div>
 
     <script>
@@ -136,14 +180,27 @@
         const subTitle = document.getElementById('subTitle');
         const iconSurvival = document.getElementById('iconSurvival');
         const iconCreative = document.getElementById('iconCreative');
+        const creativeItems = document.querySelectorAll('.creative-item');
+        const dynamicContainer = document.getElementById('dynamic-particles-container');
 
-        // 顏色定義 (RGB)
-        // Survival Mode: 深灰/黑
+        // 顏色定義
         const colorStart = { r: 30, g: 30, b: 35 }; 
-        // Creative Mode: 亮麗的天藍色/青色
-        const colorEnd = { r: 14, g: 165, b: 233 }; // Tailwind sky-500
+        const colorEnd = { r: 14, g: 165, b: 233 }; 
 
-        // 顏色插值函數
+        // 圖示路徑
+        const iconPaths = [
+            { path: 'M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z', color: 'text-yellow-300' }, // 燈泡
+            { path: 'M7 14c-1.66 0-3 1.34-3 3 0 1.31-1.16 2-2 2 .92 1.22 2.49 2 4 2 2.21 0 4-1.79 4-4 0-1.66-1.34-3-3-3zm13.71-9.37l-1.34-1.34a.996.996 0 0 0-1.41 0L9 12.25 11.75 15l8.96-8.96a.996.996 0 0 0 0-1.41z', color: 'text-pink-300' }, // 畫筆
+            { path: 'M12 2.5c4.97 0 9 4.03 9 9s-4.03 9-9 9-9-4.03-9-9 4.03-9 9-9m0-2C5.93.5.5 5.93.5 12S5.93 23.5 12 23.5 23.5 18.07 23.5 12 18.07.5 12 .5z M12 17l1.5-4h-3L12 17zm0-13l-4 8h8l-4-8z', color: 'text-red-300' }, // 火箭
+            { path: 'M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z', color: 'text-yellow-200' }, // 星星
+            { path: 'M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z', color: 'text-green-300' }, // 音符
+            { path: 'M7 2v11h3v9l7-12h-4l4-8z', color: 'text-blue-300' }, // 閃電
+            { path: 'M12.16 3h-.32L9.21 8.25h5.58L12.16 3zm1.69-1.01L15.48 8.25h3.69l-5.32-6.26zM7.21 3.56L4.83 8.25h3.69L7.21 3.56zM4.42 9.75l7.15 11.02 .43.66 .43-.66 7.15-11.02H4.42z', color: 'text-cyan-300' }, // 鑽石
+            { path: 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z', color: 'text-pink-400' } // 愛心
+        ];
+
+        let spawnTimer = null;
+
         function interpolateColor(color1, color2, factor) {
             const result = {
                 r: Math.round(color1.r + factor * (color2.r - color1.r)),
@@ -153,24 +210,75 @@
             return `rgb(${result.r}, ${result.g}, ${result.b})`;
         }
 
-        // 更新介面狀態的主函數
+        // 動態生成粒子
+        function createParticle() {
+            const randomIcon = iconPaths[Math.floor(Math.random() * iconPaths.length)];
+            const particle = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            
+            particle.setAttribute("viewBox", "0 0 24 24");
+            particle.setAttribute("class", `dynamic-particle ${randomIcon.color} fill-current`);
+            
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            path.setAttribute("d", randomIcon.path);
+            particle.appendChild(path);
+
+            // 隨機大小
+            const size = 20 + Math.random() * 50; 
+            
+            // 隨機水平位置 (0% ~ 100%)
+            const left = Math.random() * 100;
+            
+            // 隨機動畫時間 (4s ~ 9s) - 讓它飄慢一點
+            const duration = 4 + Math.random() * 5; 
+            
+            particle.style.width = `${size}px`;
+            particle.style.left = `${left}%`;
+            
+            // 統一使用平滑過渡動畫
+            particle.style.animation = `floatUpSmooth ${duration}s linear forwards`;
+            
+            // 隨機一點透明度
+            particle.style.opacity = 0.5 + Math.random() * 0.5;
+
+            dynamicContainer.appendChild(particle);
+
+            setTimeout(() => {
+                particle.remove();
+            }, duration * 1000);
+        }
+
+        function spawnLoop() {
+            const val = parseInt(slider.value);
+            
+            // 門檻設為 20，避免剛開始就跑出來
+            if (val > 20) {
+                // 每次只生成 1 個，避免瞬間爆量
+                createParticle();
+                
+                // 計算延遲：最快 300ms 一次，最慢 800ms 一次
+                const delay = 800 - ((val - 20) * 6);
+                
+                spawnTimer = setTimeout(spawnLoop, Math.max(300, delay));
+            } else {
+                spawnTimer = null;
+            }
+        }
+
         function updateInterface(value) {
             const percentage = value / 100;
             
-            // 1. 背景顏色過渡
+            // 背景顏色
             const newColor = interpolateColor(colorStart, colorEnd, percentage);
             body.style.backgroundColor = newColor;
 
-            // 2. 文字內容切換與樣式
+            // 文字與狀態
             if (value < 50) {
-                // Survival 狀態
                 if (mainTitle.innerText !== "SURVIVAL") {
                     mainTitle.innerText = "SURVIVAL";
                     subTitle.innerText = "限制與壓力";
                     mainTitle.style.textShadow = "0 0 10px rgba(0,0,0,0.5)";
                 }
             } else {
-                // Creative 狀態
                 if (mainTitle.innerText !== "CREATIVE") {
                     mainTitle.innerText = "CREATIVE";
                     subTitle.innerText = "無限想像";
@@ -178,33 +286,48 @@
                 }
             }
 
-            // 3. 圖示過渡邏輯 (交叉淡入淡出 + 縮放)
-            // Survival Icon: 0% 時不透明度 1，100% 時不透明度 0
+            // 圖示過渡
             const survivalOpacity = 1 - percentage; 
-            const survivalScale = 1 - (percentage * 0.5); // 稍微縮小
-            const survivalTranslate = percentage * -50; // 向左移動
+            const survivalScale = 1 - (percentage * 0.5); 
+            const survivalTranslate = percentage * -50; 
 
-            // Creative Icon: 0% 時不透明度 0，100% 時不透明度 1
             const creativeOpacity = percentage;
-            const creativeScale = 0.5 + (percentage * 0.5); // 從小變大
-            const creativeTranslate = (1 - percentage) * 50; // 從右移入
+            const creativeScale = 0.5 + (percentage * 0.5); 
+            const creativeTranslate = (1 - percentage) * 50; 
 
-            // 應用樣式到 Survival Icon
             iconSurvival.style.opacity = survivalOpacity;
             iconSurvival.style.transform = `translateX(${survivalTranslate}px) scale(${survivalScale})`;
-            // 只有在完全看不見時隱藏，避免點擊干擾 (這裡主要靠 opacity)
             iconSurvival.style.pointerEvents = survivalOpacity < 0.1 ? 'none' : 'auto';
 
-            // 應用樣式到 Creative Icon
             iconCreative.style.opacity = creativeOpacity;
             iconCreative.style.transform = `translateX(${creativeTranslate}px) scale(${creativeScale})`;
             
-            // 4. 動態調整字體顏色深淺 (微調)
-            // 當背景很亮時 (Creative)，文字保持白色並加強陰影，或變深一點點
-            // 這裡保持白色，但在 CSS 中利用 drop-shadow 確保可讀性
+            // 靜態背景元素過渡
+            creativeItems.forEach((item, index) => {
+                const startThreshold = 0.1;
+                let itemProgress = 0;
+                
+                if (percentage > startThreshold) {
+                    itemProgress = (percentage - startThreshold) / (1 - startThreshold);
+                }
+
+                const opacity = itemProgress * 0.25;
+                const randomFactor = (index % 5) * 20; 
+                const translateY = (1 - itemProgress) * (100 + randomFactor);
+                const scale = 0.3 + (itemProgress * 0.7);
+                const rotateDir = index % 2 === 0 ? 1 : -1;
+                const rotate = itemProgress * 45 * rotateDir;
+
+                item.style.opacity = opacity;
+                item.style.transform = `translateY(${translateY}px) scale(${scale}) rotate(${rotate}deg)`;
+            });
+
+            // 觸發循環
+            if (value > 20 && !spawnTimer) {
+                spawnLoop();
+            }
         }
 
-        // 監聽滑桿輸入事件
         slider.addEventListener('input', (e) => {
             updateInterface(e.target.value);
         });
