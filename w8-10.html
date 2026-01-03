@@ -1,449 +1,624 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Music, Volume2, VolumeX, Send, Compass, X, Sparkles, MapPin, Share2 } from 'lucide-react';
-
-// --- 資料庫：來自世界各地的回憶 ---
-const MEMORY_DATABASE = [
-  {
-    id: 1,
-    city: "巴黎",
-    country: "法國",
-    title: "塞納河畔的日出",
-    desc: "清晨五點的薄霧中，看見艾菲爾鐵塔被染成金黃色。空氣中有剛出爐的可頌香氣。",
-    tags: ["浪漫", "清晨"],
-    color: "from-orange-100 to-rose-200",
-    imgKeyword: "paris,sunrise"
-  },
-  {
-    id: 2,
-    city: "京都",
-    country: "日本",
-    title: "鴨川納涼床",
-    desc: "夏日夜晚，坐在河床上聽著流水聲，手中的仙女棒剛好燃燒殆盡，留下一縷煙。",
-    tags: ["寧靜", "夏夜"],
-    color: "from-blue-100 to-indigo-200",
-    imgKeyword: "kyoto,river"
-  },
-  {
-    id: 3,
-    city: "雷克雅維克",
-    country: "冰島",
-    title: "極光下的熱可可",
-    desc: "零下十度，綠色的光帶在頭頂舞動。手裡的熱可可是這世界上最溫暖的東西。",
-    tags: ["奇蹟", "寒冬"],
-    color: "from-emerald-100 to-teal-200",
-    imgKeyword: "aurora,night"
-  },
-  {
-    id: 4,
-    city: "清邁",
-    country: "泰國",
-    title: "萬人天燈節",
-    desc: "成千上萬的燈火緩緩升空，像倒流的星星。那一刻，所有的願望似乎都被聽見了。",
-    tags: ["感動", "祈福"],
-    color: "from-yellow-100 to-orange-200",
-    imgKeyword: "lantern,festival"
-  },
-  {
-    id: 5,
-    city: "阿爾卑斯山",
-    country: "瑞士",
-    title: "沒有訊號的午後",
-    desc: "火車經過蜿蜒的山谷，窗外是像電腦桌布一樣不真實的草地與牛鈴聲。",
-    tags: ["放鬆", "自然"],
-    color: "from-green-100 to-emerald-200",
-    imgKeyword: "switzerland,mountain"
-  },
-  {
-    id: 6,
-    city: "九份",
-    country: "台灣",
-    title: "雨中的紅燈籠",
-    desc: "拾級而上，霧氣與茶香交織。遠方的海港燈火闌珊，彷彿走進了千尋的世界。",
-    tags: ["懷舊", "雨天"],
-    color: "from-red-100 to-orange-100",
-    imgKeyword: "jiufen,lantern"
-  }
-];
-
-// --- Web Audio API 合成器 (無需外部檔案) ---
-// 產生療癒的氛圍音樂與音效
-class AudioEngine {
-  constructor() {
-    this.ctx = null;
-    this.oscillators = [];
-    this.isPlaying = false;
-  }
-
-  init() {
-    if (!this.ctx) {
-      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-  }
-
-  // 播放柔和的背景和弦 (Ambient Pad)
-  playAmbient() {
-    if (!this.ctx) this.init();
-    if (this.ctx.state === 'suspended') this.ctx.resume();
-    if (this.isPlaying) return;
-
-    this.isPlaying = true;
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MemoVend 回憶販賣機</title>
     
-    // 簡單的五聲音階和弦
-    const freqs = [196.00, 261.63, 329.63, 392.00]; // G3, C4, E4, G4
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
     
-    freqs.forEach((freq, i) => {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      
-      // 緩慢的音量起伏 (LFO 模擬)
-      gain.gain.setValueAtTime(0, this.ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.03, this.ctx.currentTime + 2 + i);
-      
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start();
-      
-      this.oscillators.push({ osc, gain });
-    });
-  }
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 
-  stopAmbient() {
-    if (!this.ctx) return;
-    this.oscillators.forEach(({ osc, gain }) => {
-      // 淡出
-      gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 1);
-      setTimeout(() => osc.stop(), 1000);
-    });
-    this.oscillators = [];
-    this.isPlaying = false;
-  }
+    <style>
+        /* 自定義字型 */
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700&display=swap');
 
-  // 播放卡片掉落/機械音效
-  playDispenseSound() {
-    if (!this.ctx) this.init();
-    if (this.ctx.state === 'suspended') this.ctx.resume();
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+        }
 
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(150, this.ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.5);
-    
-    gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
-    
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start();
-    osc.stop(this.ctx.currentTime + 0.6);
-  }
-  
-  // 播放成功獲得音效
-  playSuccessSound() {
-    if (!this.ctx) this.init();
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'sine';
-    
-    // 叮～的聲音
-    osc.frequency.setValueAtTime(523.25, this.ctx.currentTime);
-    osc.frequency.setValueAtTime(1046.50, this.ctx.currentTime + 0.1);
-    
-    gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 1);
-    
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start();
-    osc.stop(this.ctx.currentTime + 1.2);
-  }
-}
+        /* 背景雜訊紋理 */
+        .bg-noise {
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E");
+        }
 
-const audioEngine = new AudioEngine();
-
-export default function MemoVend() {
-  const [isAudioOn, setIsAudioOn] = useState(false);
-  const [dispensing, setDispensing] = useState(false);
-  const [currentCard, setCurrentCard] = useState(null);
-  const [showShareModal, setShowShareModal] = useState(false);
-  const [userMemory, setUserMemory] = useState("");
-  const [notification, setNotification] = useState(null);
-
-  // 初始化 AudioContext
-  const toggleAudio = () => {
-    if (!isAudioOn) {
-      audioEngine.playAmbient();
-      setIsAudioOn(true);
-    } else {
-      audioEngine.stopAmbient();
-      setIsAudioOn(false);
-    }
-  };
-
-  const handleExplore = () => {
-    if (dispensing) return;
-    
-    setDispensing(true);
-    setCurrentCard(null);
-    audioEngine.playDispenseSound();
-
-    // 模擬機械運作時間
-    setTimeout(() => {
-      const randomMemory = MEMORY_DATABASE[Math.floor(Math.random() * MEMORY_DATABASE.length)];
-      setCurrentCard(randomMemory);
-      setDispensing(false);
-      audioEngine.playSuccessSound();
-    }, 1500);
-  };
-
-  const handleShareSubmit = (e) => {
-    e.preventDefault();
-    setShowShareModal(false);
-    setUserMemory("");
-    
-    // 顯示感謝訊息
-    setNotification("感謝你的分享！這段回憶已被販賣機收藏。");
-    audioEngine.playSuccessSound();
-    setTimeout(() => setNotification(null), 3000);
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-sans text-slate-800 relative overflow-hidden">
-      
-      {/* 背景裝飾 */}
-      <div className="absolute inset-0 z-0 opacity-30 pointer-events-none">
-        <div className="absolute top-10 left-10 w-64 h-64 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
-        <div className="absolute top-10 right-10 w-64 h-64 bg-yellow-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000"></div>
-        <div className="absolute -bottom-8 left-20 w-64 h-64 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-4000"></div>
-      </div>
-
-      {/* 主機台 */}
-      <div className="relative z-10 w-full max-w-md bg-rose-50 rounded-[40px] shadow-2xl overflow-hidden border-4 border-rose-100 ring-4 ring-slate-900/10">
-        
-        {/* 頂部：標題與音效控制 */}
-        <div className="bg-rose-200 p-4 flex justify-between items-center border-b-4 border-rose-300">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-red-400 animate-pulse"></div>
-            <h1 className="font-bold text-xl text-rose-800 tracking-wider">MemoVend</h1>
-          </div>
-          <button 
-            onClick={toggleAudio}
-            className="p-2 bg-white/50 rounded-full hover:bg-white transition-colors text-rose-700"
-          >
-            {isAudioOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
-          </button>
-        </div>
-
-        {/* 玻璃展示窗 */}
-        <div className="p-6 bg-gradient-to-b from-slate-800 to-slate-900 m-4 rounded-3xl relative h-64 shadow-inner overflow-hidden group">
-          
-          {/* 玻璃反光效果 */}
-          <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-tr from-white/5 to-transparent pointer-events-none z-20"></div>
-          <div className="absolute top-4 right-4 w-20 h-4 bg-white/10 rounded-full blur-sm transform -rotate-12 z-20"></div>
-
-          {/* 內部展示內容 */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 z-10">
-            {dispensing ? (
-              <div className="flex flex-col items-center animate-bounce">
-                <Compass size={48} className="text-rose-300 mb-2 animate-spin-slow" />
-                <p className="text-rose-200 text-sm tracking-widest">搜尋記憶頻率中...</p>
-              </div>
-            ) : (
-              <div className="space-y-3 opacity-80 group-hover:opacity-100 transition-opacity">
-                <Sparkles size={32} className="text-yellow-200 mx-auto" />
-                <p className="text-slate-300 text-sm font-light leading-relaxed">
-                  這裡儲存著來自世界各地的片刻。<br/>
-                  每一次點擊，都是一次偶遇。
-                </p>
-              </div>
-            )}
-          </div>
-          
-          {/* 背景星塵動效 */}
-          <div className="absolute inset-0 z-0">
-             {[...Array(10)].map((_, i) => (
-               <div key={i} className="absolute bg-white rounded-full opacity-20 animate-pulse"
-                 style={{
-                   top: `${Math.random() * 100}%`,
-                   left: `${Math.random() * 100}%`,
-                   width: `${Math.random() * 3 + 1}px`,
-                   height: `${Math.random() * 3 + 1}px`,
-                   animationDuration: `${Math.random() * 3 + 2}s`
-                 }}
-               />
-             ))}
-          </div>
-        </div>
-
-        {/* 控制面板 */}
-        <div className="px-8 pb-6 grid grid-cols-2 gap-4">
-          
-          {/* 探索按鈕 */}
-          <button 
-            onClick={handleExplore}
-            disabled={dispensing}
-            className="group relative flex flex-col items-center justify-center h-24 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-[0_6px_0_rgb(55,48,163)] active:shadow-none active:translate-y-[6px] transition-all disabled:opacity-80 disabled:cursor-not-allowed overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <Compass className="w-8 h-8 text-white mb-1 group-hover:rotate-45 transition-transform duration-500" />
-            <span className="text-white font-bold tracking-widest">探索</span>
-            <span className="text-[10px] text-indigo-200 uppercase mt-1">Dispense</span>
-          </button>
-
-          {/* 分享按鈕 */}
-          <button 
-            onClick={() => setShowShareModal(true)}
-            className="group relative flex flex-col items-center justify-center h-24 bg-gradient-to-br from-pink-400 to-rose-500 rounded-2xl shadow-[0_6px_0_rgb(190,24,93)] active:shadow-none active:translate-y-[6px] transition-all"
-          >
-            <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <Share2 className="w-8 h-8 text-white mb-1 group-hover:-translate-y-1 transition-transform" />
-            <span className="text-white font-bold tracking-widest">分享</span>
-            <span className="text-[10px] text-rose-100 uppercase mt-1">Insert</span>
-          </button>
-        </div>
-
-        {/* 取物口 (Collection Slot) */}
-        <div className="relative mx-6 mb-8 h-40 bg-slate-800 rounded-b-lg rounded-t-3xl shadow-inner border-t-8 border-slate-700 flex items-end justify-center perspective-1000 overflow-visible">
-          
-          {/* 擋板陰影 */}
-          <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-black/50 to-transparent z-10 pointer-events-none"></div>
-
-          {/* 掉落的記憶卡片 */}
-          {currentCard && (
-            <div className="relative z-20 w-64 mb-4 animate-drop transform hover:scale-105 transition-transform duration-300 cursor-pointer group">
-              <div className={`bg-white p-3 pb-5 rounded shadow-lg transform rotate-[-2deg] group-hover:rotate-0 transition-transform duration-300`}>
-                
-                {/* 拍立得圖片區域 */}
-                <div className={`w-full h-32 bg-gradient-to-br ${currentCard.color} mb-3 rounded-sm overflow-hidden relative`}>
-                    <img 
-                        src={`https://source.unsplash.com/400x300/?${currentCard.imgKeyword}`} 
-                        alt={currentCard.title}
-                        className="w-full h-full object-cover mix-blend-multiply opacity-90 hover:opacity-100 transition-opacity"
-                        onError={(e) => e.target.style.display = 'none'} 
-                    />
-                    <div className="absolute bottom-2 right-2 bg-white/80 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] flex items-center gap-1 font-bold text-slate-600">
-                        <MapPin size={10} /> {currentCard.city}
-                    </div>
-                </div>
-
-                {/* 文字內容 */}
-                <div className="px-1">
-                  <h3 className="font-bold text-slate-800 text-sm mb-1">{currentCard.title}</h3>
-                  <p className="text-[10px] text-slate-500 leading-tight mb-2 text-justify">
-                    {currentCard.desc}
-                  </p>
-                  <div className="flex gap-1 flex-wrap">
-                    {currentCard.tags.map(tag => (
-                      <span key={tag} className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">#{tag}</span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {!currentCard && !dispensing && (
-            <div className="mb-12 text-slate-600 text-xs font-mono animate-pulse">
-              [ WAITING FOR MEMORY ]
-            </div>
-          )}
-        </div>
-
-        {/* 底部裝飾條 */}
-        <div className="h-4 bg-rose-300 w-full flex items-center justify-center gap-4">
-             <div className="w-16 h-1 bg-rose-400/50 rounded-full"></div>
-        </div>
-      </div>
-
-      {/* 分享 Modal */}
-      {showShareModal && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl transform scale-100 animate-scale-up">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-lg text-slate-700 flex items-center gap-2">
-                <Send size={20} className="text-pink-500" />
-                投入回憶
-              </h3>
-              <button onClick={() => setShowShareModal(false)} className="text-slate-400 hover:text-slate-600">
-                <X size={20} />
-              </button>
-            </div>
-            <form onSubmit={handleShareSubmit}>
-              <p className="text-sm text-slate-500 mb-3">分享一個溫暖的瞬間，讓它成為別人的驚喜。</p>
-              <textarea 
-                className="w-full h-32 p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-300 text-sm resize-none mb-4 text-slate-700"
-                placeholder="例如：在北海道販賣機買到的熱玉米湯..."
-                value={userMemory}
-                onChange={(e) => setUserMemory(e.target.value)}
-                required
-              />
-              <button 
-                type="submit"
-                className="w-full py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl font-bold shadow-lg shadow-pink-200 hover:shadow-xl hover:translate-y-[-2px] transition-all"
-              >
-                發送回憶
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 通知提示 */}
-      {notification && (
-        <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur border border-green-100 text-green-700 px-4 py-2 rounded-full shadow-lg text-sm flex items-center gap-2 animate-bounce-in z-50">
-          <Sparkles size={14} />
-          {notification}
-        </div>
-      )}
-
-      <style>{`
+        /* 自定義動畫 */
         @keyframes drop {
-          0% { transform: translateY(-150%) rotate(5deg) scale(0.9); opacity: 0; }
-          60% { transform: translateY(10%) rotate(-5deg) scale(1.02); opacity: 1; }
-          80% { transform: translateY(-5%) rotate(2deg) scale(1); }
-          100% { transform: translateY(0) rotate(-2deg); }
+            0% { transform: translateY(-120%) rotate(5deg) scale(0.9); opacity: 0; }
+            60% { transform: translateY(10%) rotate(-5deg) scale(1.02); opacity: 1; }
+            80% { transform: translateY(-5%) rotate(2deg) scale(1); }
+            100% { transform: translateY(0) rotate(-2deg); }
         }
         .animate-drop {
-          animation: drop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            animation: drop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
         }
         .animate-blob {
-          animation: blob 7s infinite;
+            animation: blob 10s infinite alternate;
         }
-        .animate-fade-in {
-          animation: fadeIn 0.3s ease-out;
+        .animation-delay-2000 {
+            animation-delay: 2s;
         }
-        .animate-scale-up {
-          animation: scaleUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        .animation-delay-4000 {
+            animation-delay: 4s;
         }
-        .animate-bounce-in {
-            animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-        }
-        .perspective-1000 {
-            perspective: 1000px;
-        }
-        @keyframes blob {
-          0% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(30px, -50px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.9); }
-          100% { transform: translate(0px, 0px) scale(1); }
-        }
+
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
         }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+
         @keyframes scaleUp {
             from { transform: scale(0.9); opacity: 0; }
             to { transform: scale(1); opacity: 1; }
         }
+        .animate-scale-up {
+            animation: scaleUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
         @keyframes bounceIn {
             0% { transform: translate(-50%, -200%); opacity: 0; }
             100% { transform: translate(-50%, 0); opacity: 1; }
         }
-      `}</style>
+        .animate-bounce-in {
+            animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+        
+        /* 玻璃擬態加強 - 改為深色模式 */
+        .glass-panel {
+            background: rgba(13, 16, 28, 0.6); /* 深色半透明背景 */
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08); /* 降低邊框亮度 */
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+
+        .screen-glow {
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5), 0 0 15px rgba(167, 139, 250, 0.15);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 font-sans text-slate-800 relative overflow-hidden bg-[#0a0910]">
+
+    <!-- 新的背景漸層：午夜夢境 (更深沉) -->
+    <div class="absolute inset-0 z-0 bg-gradient-to-br from-[#1a0b2e] via-[#0f172a] to-[#111827] opacity-90"></div>
+    
+    <!-- 雜訊紋理層 -->
+    <div class="absolute inset-0 z-0 bg-noise opacity-[0.05] pointer-events-none mix-blend-overlay"></div>
+
+    <!-- 動態光暈背景 -->
+    <div class="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+        <div class="absolute top-0 left-1/4 w-96 h-96 bg-purple-900/30 rounded-full mix-blend-screen filter blur-[120px] animate-blob"></div>
+        <div class="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-900/30 rounded-full mix-blend-screen filter blur-[120px] animate-blob animation-delay-2000"></div>
+        <div class="absolute top-1/2 left-1/2 w-72 h-72 bg-rose-900/20 rounded-full mix-blend-screen filter blur-[100px] animate-blob animation-delay-4000"></div>
     </div>
-  );
-}
+
+    <!-- 主機台 (深色玻璃風格) -->
+    <div class="relative z-10 w-full max-w-md glass-panel rounded-[40px] overflow-hidden shadow-2xl">
+        
+        <!-- 頂部：標題與音效控制 (深色透光) -->
+        <div class="bg-white/5 p-4 flex justify-between items-center border-b border-white/5">
+            <div class="flex items-center gap-2">
+                <div class="relative">
+                    <div class="w-3 h-3 rounded-full bg-rose-500 animate-pulse relative z-10 shadow-[0_0_10px_rgba(244,63,94,0.5)]"></div>
+                    <div class="absolute inset-0 bg-rose-500/50 rounded-full animate-ping opacity-75"></div>
+                </div>
+                <h1 class="font-bold text-xl text-rose-100/90 tracking-wider flex items-center gap-2">
+                    MemoVend <span class="text-[9px] bg-rose-500/20 text-rose-200 border border-rose-500/30 px-1.5 py-0.5 rounded tracking-normal">MIDNIGHT</span>
+                </h1>
+            </div>
+            <button id="audio-btn" class="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-all text-slate-400 hover:text-rose-400 border border-white/5">
+                <i data-lucide="volume-x" id="audio-icon" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <!-- 玻璃展示窗 (螢幕) -->
+        <div class="mx-5 mt-6 mb-2 p-1 bg-black/40 rounded-[28px] shadow-inner relative border border-white/5">
+            
+            <div class="bg-gradient-to-b from-[#0f172a] to-[#020617] rounded-[24px] relative h-60 overflow-hidden group screen-glow">
+                <!-- 螢幕反光 (減弱) -->
+                <div class="absolute top-0 right-0 w-full h-full bg-gradient-to-tr from-white/5 to-transparent pointer-events-none z-20"></div>
+                <div class="absolute top-4 right-6 w-16 h-2 bg-white/5 rounded-full blur-sm transform -rotate-12 z-20 opacity-50"></div>
+
+                <!-- 內部展示內容 -->
+                <div id="display-content" class="absolute inset-0 flex flex-col items-center justify-center text-center p-4 z-10">
+                    <!-- 預設內容 -->
+                    <div id="default-msg" class="space-y-4 opacity-80 group-hover:opacity-100 transition-opacity">
+                        <div class="relative">
+                            <i data-lucide="sparkles" class="text-amber-100/80 mx-auto w-8 h-8 animate-pulse drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]"></i>
+                        </div>
+                        <p class="text-slate-300/90 text-sm font-light leading-relaxed tracking-wide">
+                            這裡儲存著世界的碎片。<br/>
+                            <span class="text-xs text-slate-500 mt-2 block">點擊探索，交換一段回憶。</span>
+                        </p>
+                    </div>
+                    <!-- 處理中內容 -->
+                    <div id="processing-msg" class="hidden flex flex-col items-center">
+                        <i data-lucide="loader-2" class="text-rose-400 mb-3 w-10 h-10 animate-spin"></i>
+                        <p class="text-rose-200/80 text-sm tracking-widest animate-pulse">搜尋頻率中...</p>
+                    </div>
+                </div>
+                
+                <!-- 背景星塵 -->
+                <div id="stars-container" class="absolute inset-0 z-0 opacity-40"></div>
+            </div>
+        </div>
+
+        <!-- 取物口 (中間) -->
+        <div class="relative z-20 mx-6 my-4 h-40 bg-[#0a0a0f] rounded-b-xl rounded-t-[30px] shadow-[inset_0_10px_30px_rgba(0,0,0,0.8)] border-b border-white/5 flex items-end justify-center perspective-1000 overflow-visible group">
+            
+            <!-- 邊框微光 -->
+            <div class="absolute inset-0 rounded-b-xl rounded-t-[30px] border-t border-white/10 pointer-events-none"></div>
+            
+            <!-- 擋板陰影 -->
+            <div class="absolute top-0 left-0 right-0 h-12 bg-gradient-to-b from-black to-transparent z-10 pointer-events-none opacity-80"></div>
+
+            <!-- 卡片容器 -->
+            <div id="card-slot" class="relative z-20 flex items-end justify-center pb-5 w-full">
+                <!-- 初始空狀態文字 -->
+                <div id="slot-empty-msg" class="mb-8 text-slate-600 text-[10px] font-mono tracking-widest opacity-30">
+                    /// SLOT EMPTY ///
+                </div>
+            </div>
+            
+            <!-- 取物口標籤 -->
+            <div class="absolute bottom-2 left-1/2 transform -translate-x-1/2 text-[9px] text-slate-600 font-bold tracking-widest uppercase opacity-30">
+                Collection Slot
+            </div>
+        </div>
+
+        <!-- 控制面板 (底部) -->
+        <div class="relative z-30 px-6 pb-6 pt-2 grid grid-cols-2 gap-4">
+            <!-- 探索按鈕 -->
+            <button id="explore-btn" class="group relative flex flex-col items-center justify-center h-20 bg-gradient-to-b from-indigo-600 to-indigo-900 rounded-2xl shadow-[0_4px_0_rgb(30,27,75),0_10px_15px_rgba(0,0,0,0.3)] active:shadow-none active:translate-y-[4px] active:bg-indigo-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden border-t border-white/10">
+                <div class="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="flex items-center gap-2 mb-1">
+                    <i data-lucide="compass" class="w-5 h-5 text-indigo-200 group-hover:rotate-45 transition-transform duration-500"></i>
+                    <span class="text-indigo-100 font-bold tracking-widest text-lg text-shadow">探索</span>
+                </div>
+                <span class="text-[9px] text-indigo-300/60 uppercase tracking-wider">Explore</span>
+            </button>
+
+            <!-- 分享按鈕 -->
+            <button id="share-btn" class="group relative flex flex-col items-center justify-center h-20 bg-gradient-to-b from-rose-500 to-rose-800 rounded-2xl shadow-[0_4px_0_rgb(136,19,55),0_10px_15px_rgba(0,0,0,0.3)] active:shadow-none active:translate-y-[4px] active:bg-rose-700 transition-all border-t border-white/10">
+                <div class="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="flex items-center gap-2 mb-1">
+                    <i data-lucide="share-2" class="w-5 h-5 text-rose-200 group-hover:-translate-y-0.5 transition-transform"></i>
+                    <span class="text-rose-100 font-bold tracking-widest text-lg text-shadow">分享</span>
+                </div>
+                <span class="text-[9px] text-rose-300/60 uppercase tracking-wider">Share</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 分享 Modal (深色主題) -->
+    <div id="share-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in">
+        <div class="bg-[#1e1e2e] w-full max-w-sm rounded-2xl p-6 shadow-2xl transform scale-100 animate-scale-up border border-white/10 relative overflow-hidden">
+            <!-- 裝飾背景 -->
+            <div class="absolute top-0 right-0 w-32 h-32 bg-rose-500/20 rounded-full mix-blend-screen filter blur-3xl pointer-events-none transform translate-x-10 -translate-y-10"></div>
+            
+            <div class="flex justify-between items-center mb-4 relative z-10">
+                <h3 class="font-bold text-lg text-rose-100 flex items-center gap-2">
+                    <div class="p-2 bg-rose-500/20 rounded-lg border border-rose-500/20">
+                        <i data-lucide="send" class="text-rose-400 w-5 h-5"></i>
+                    </div>
+                    投入回憶
+                </h3>
+                <button id="close-modal-btn" class="text-slate-400 hover:text-white hover:bg-white/10 p-1 rounded-full transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form id="share-form" class="relative z-10">
+                <p class="text-sm text-slate-400 mb-3">分享一個溫暖的瞬間，讓它成為別人的驚喜。</p>
+                <textarea 
+                    id="memory-input"
+                    class="w-full h-32 p-4 bg-black/30 border border-white/10 rounded-xl focus:outline-none focus:ring-1 focus:ring-rose-400/50 text-sm resize-none mb-4 text-slate-200 placeholder:text-slate-600"
+                    placeholder="例如：在北海道販賣機買到的熱玉米湯..."
+                    required
+                ></textarea>
+                <button 
+                    type="submit"
+                    class="w-full py-3.5 bg-gradient-to-r from-rose-600 to-pink-700 text-white rounded-xl font-bold shadow-lg shadow-rose-900/50 hover:shadow-rose-900/70 hover:translate-y-[-1px] active:translate-y-[1px] transition-all flex items-center justify-center gap-2 border border-white/10"
+                >
+                    <span>發送回憶</span>
+                    <i data-lucide="sparkles" class="w-4 h-4 text-rose-200"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 詳情 Modal (深色主題) -->
+    <div id="detail-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-fade-in">
+        <div class="bg-[#1e1e2e] w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl transform scale-100 animate-scale-up relative border border-white/10">
+            <!-- 關閉按鈕 -->
+            <button id="close-detail-btn" class="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 backdrop-blur-sm text-white rounded-full p-2 transition-all hover:rotate-90 border border-white/10">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+            
+            <!-- 大圖 -->
+            <div class="h-72 bg-slate-900 relative group overflow-hidden">
+                <img id="detail-img" src="" class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 opacity-90 hover:opacity-100">
+                <div class="absolute inset-0 bg-gradient-to-t from-[#1e1e2e] via-transparent to-transparent"></div>
+                <div class="absolute bottom-0 left-0 w-full p-8 pt-12">
+                     <div class="text-rose-200/90 flex items-center gap-2 mb-2">
+                        <i data-lucide="map-pin" class="w-4 h-4 text-rose-500"></i>
+                        <span id="detail-location" class="font-bold text-lg tracking-wide text-shadow-sm"></span>
+                     </div>
+                     <h2 id="detail-title" class="text-3xl font-bold text-white leading-tight text-shadow-md"></h2>
+                </div>
+            </div>
+            
+            <!-- 內容 -->
+            <div class="p-8 bg-[#1e1e2e] relative">
+                <div class="absolute -top-6 right-8">
+                     <div class="bg-gradient-to-br from-rose-500 to-rose-700 text-white p-3 rounded-full shadow-lg shadow-black/50 border border-white/10">
+                        <i data-lucide="quote" class="w-5 h-5 fill-current"></i>
+                     </div>
+                </div>
+                <p id="detail-desc" class="text-slate-300 leading-relaxed mb-6 text-base font-light tracking-wide"></p>
+                <div id="detail-tags" class="flex gap-2 flex-wrap pt-4 border-t border-white/10"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通知提示 -->
+    <div id="notification" class="hidden fixed top-8 left-1/2 transform -translate-x-1/2 bg-[#1e1e2e]/90 backdrop-blur-md border border-emerald-500/30 text-emerald-400 px-6 py-3 rounded-full shadow-xl text-sm flex items-center gap-3 animate-bounce-in z-50 whitespace-nowrap">
+        <div class="bg-emerald-500/20 p-1 rounded-full">
+            <i data-lucide="check" class="w-4 h-4"></i>
+        </div>
+        <span id="notification-text" class="font-medium">訊息</span>
+    </div>
+
+    <script>
+        // --- 1. 資料庫 (圖片連結) ---
+        const MEMORY_DATABASE = [
+            { 
+                id: 1, 
+                city: "巴黎", 
+                country: "法國", 
+                title: "塞納河畔的日出", 
+                desc: "清晨五點的薄霧中，看見艾菲爾鐵塔被染成金黃色。空氣中有剛出爐的可頌香氣，那種平靜讓我想起了一切美好的開始。", 
+                tags: ["浪漫", "清晨", "旅行"], 
+                color: "from-orange-100 to-rose-200", 
+                imgUrl: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&q=80" 
+            },
+            { 
+                id: 2, 
+                city: "京都", 
+                country: "日本", 
+                title: "鴨川納涼床", 
+                desc: "夏日夜晚，坐在河床上聽著流水聲，手中的仙女棒剛好燃燒殆盡，留下一縷煙。朋友們的笑聲和遠處的蟬鳴，織成了最難忘的夏日回憶。", 
+                tags: ["寧靜", "夏夜", "友情"], 
+                color: "from-blue-100 to-indigo-200", 
+                imgUrl: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=800&q=80"
+            },
+            { 
+                id: 3, 
+                city: "雷克雅維克", 
+                country: "冰島", 
+                title: "極光下的熱可可", 
+                desc: "零下十度，綠色的光帶在頭頂舞動，像是精靈的舞蹈。手裡的熱可可是這世界上最溫暖的東西，我們相視而笑，不需要任何言語。", 
+                tags: ["奇蹟", "寒冬", "自然"], 
+                color: "from-emerald-100 to-teal-200", 
+                imgUrl: "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=800&q=80"
+            },
+            { 
+                id: 4, 
+                city: "清邁", 
+                country: "泰國", 
+                title: "萬人天燈節", 
+                desc: "成千上萬的燈火緩緩升空，像倒流的星星。那一刻，所有的願望似乎都被聽見了，眼淚不自覺地流下來，那是一種被祝福的感動。", 
+                tags: ["感動", "祈福", "節慶"], 
+                color: "from-yellow-100 to-orange-200", 
+                imgUrl: "https://images.unsplash.com/photo-1533408874882-397bf377a8c2?w=800&q=80"
+            },
+            { 
+                id: 5, 
+                city: "阿爾卑斯山", 
+                country: "瑞士", 
+                title: "沒有訊號的午後", 
+                desc: "火車經過蜿蜒的山谷，窗外是像電腦桌布一樣不真實的草地與牛鈴聲。手機完全沒有訊號，但我卻感到前所未有的連結與富足。", 
+                tags: ["放鬆", "自然", "逃離"], 
+                color: "from-green-100 to-emerald-200", 
+                imgUrl: "https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?w=800&q=80"
+            },
+            { 
+                id: 6, 
+                city: "九份", 
+                country: "台灣", 
+                title: "雨中的紅燈籠", 
+                desc: "拾級而上，霧氣與茶香交織。遠方的海港燈火闌珊，彷彿走進了千尋的世界。熱茶的溫度透過杯壁傳來，溫暖了整個潮濕的午後。", 
+                tags: ["懷舊", "雨天", "老街"], 
+                color: "from-red-100 to-orange-100", 
+                imgUrl: "https://images.unsplash.com/photo-1552993873-0dd1110e025f?w=800&q=80"
+            }
+        ];
+
+        // --- 2. 音效引擎 ---
+        class AudioEngine {
+            constructor() {
+                this.ctx = null;
+                this.oscillators = [];
+                this.isPlaying = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            playAmbient() {
+                this.init();
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+                if (this.isPlaying) return;
+
+                this.isPlaying = true;
+                const freqs = [196.00, 261.63, 329.63, 392.00]; // G3, C4, E4, G4
+                
+                freqs.forEach((freq, i) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0, this.ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.03, this.ctx.currentTime + 2 + i);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    this.oscillators.push({ osc, gain });
+                });
+            }
+
+            stopAmbient() {
+                if (!this.ctx) return;
+                this.oscillators.forEach(({ osc, gain }) => {
+                    gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 1);
+                    setTimeout(() => osc.stop(), 1000);
+                });
+                this.oscillators = [];
+                this.isPlaying = false;
+            }
+
+            playDispenseSound() {
+                this.init();
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.5);
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.6);
+            }
+            
+            playSuccessSound() {
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, this.ctx.currentTime);
+                osc.frequency.setValueAtTime(1046.50, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 1);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 1.2);
+            }
+        }
+
+        const audioEngine = new AudioEngine();
+
+        // --- 3. UI 邏輯 ---
+        let isAudioOn = false;
+        let isDispensing = false;
+
+        const exploreBtn = document.getElementById('explore-btn');
+        const shareBtn = document.getElementById('share-btn');
+        const audioBtn = document.getElementById('audio-btn');
+        const audioIcon = document.getElementById('audio-icon');
+        const cardSlot = document.getElementById('card-slot');
+        const defaultMsg = document.getElementById('default-msg');
+        const processingMsg = document.getElementById('processing-msg');
+        const shareModal = document.getElementById('share-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const shareForm = document.getElementById('share-form');
+        const notification = document.getElementById('notification');
+        const notificationText = document.getElementById('notification-text');
+        const starsContainer = document.getElementById('stars-container');
+        
+        const detailModal = document.getElementById('detail-modal');
+        const closeDetailBtn = document.getElementById('close-detail-btn');
+        const detailImg = document.getElementById('detail-img');
+        const detailLocation = document.getElementById('detail-location');
+        const detailTitle = document.getElementById('detail-title');
+        const detailDesc = document.getElementById('detail-desc');
+        const detailTags = document.getElementById('detail-tags');
+
+        lucide.createIcons();
+
+        // 星星背景
+        for(let i=0; i<15; i++) {
+            const star = document.createElement('div');
+            star.className = 'absolute bg-white rounded-full opacity-60 animate-pulse';
+            star.style.top = Math.random() * 100 + '%';
+            star.style.left = Math.random() * 100 + '%';
+            star.style.width = (Math.random() * 2 + 1) + 'px';
+            star.style.height = (Math.random() * 2 + 1) + 'px';
+            star.style.animationDuration = (Math.random() * 3 + 2) + 's';
+            starsContainer.appendChild(star);
+        }
+
+        audioBtn.addEventListener('click', () => {
+            if (!isAudioOn) {
+                audioEngine.playAmbient();
+                isAudioOn = true;
+                audioIcon.setAttribute('data-lucide', 'volume-2');
+                audioBtn.classList.add('text-rose-400');
+                audioBtn.classList.add('bg-white/10');
+                audioBtn.classList.remove('text-slate-400');
+                audioBtn.classList.remove('bg-white/5');
+            } else {
+                audioEngine.stopAmbient();
+                isAudioOn = false;
+                audioIcon.setAttribute('data-lucide', 'volume-x');
+                audioBtn.classList.remove('text-rose-400');
+                audioBtn.classList.remove('bg-white/10');
+                audioBtn.classList.add('text-slate-400');
+                audioBtn.classList.add('bg-white/5');
+            }
+            lucide.createIcons();
+        });
+
+        // 開啟詳情
+        window.openDetail = (id) => {
+            const card = MEMORY_DATABASE.find(c => c.id === id);
+            if (!card) return;
+
+            detailImg.src = card.imgUrl;
+            detailLocation.textContent = `${card.city}, ${card.country}`;
+            detailTitle.textContent = card.title;
+            detailDesc.textContent = card.desc;
+            detailTags.innerHTML = card.tags.map(tag => `<span class="text-xs font-bold bg-rose-500/10 text-rose-300 border border-rose-500/20 px-3 py-1 rounded-full">#${tag}</span>`).join('');
+
+            detailModal.classList.remove('hidden');
+            detailModal.classList.add('flex');
+            lucide.createIcons();
+        };
+
+        const closeDetail = () => {
+            detailModal.classList.add('hidden');
+            detailModal.classList.remove('flex');
+        };
+
+        closeDetailBtn.addEventListener('click', closeDetail);
+        detailModal.addEventListener('click', (e) => {
+            if (e.target === detailModal) closeDetail();
+        });
+
+        exploreBtn.addEventListener('click', () => {
+            if (isDispensing) return;
+
+            isDispensing = true;
+            exploreBtn.disabled = true;
+            
+            try {
+                audioEngine.playDispenseSound();
+            } catch (e) {
+                console.warn("Audio play failed:", e);
+            }
+
+            defaultMsg.classList.add('hidden');
+            processingMsg.classList.remove('hidden');
+            cardSlot.innerHTML = ''; 
+
+            setTimeout(() => {
+                try {
+                    const card = MEMORY_DATABASE[Math.floor(Math.random() * MEMORY_DATABASE.length)];
+                    
+                    const cardHTML = `
+                        <div onclick="openDetail(${card.id})" class="relative z-20 w-64 mb-1 animate-drop transform hover:scale-105 transition-transform duration-300 cursor-pointer group">
+                            <div class="bg-[#1e1e2e] p-2 pb-3.5 rounded shadow-xl transform rotate-[-2deg] group-hover:rotate-0 transition-transform duration-300 border border-white/10 ring-1 ring-black/20">
+                                <div class="w-full h-24 bg-gradient-to-br ${card.color} mb-2 rounded-sm overflow-hidden relative">
+                                    <img 
+                                        src="${card.imgUrl}" 
+                                        alt="${card.title}"
+                                        class="w-full h-full object-cover mix-blend-overlay opacity-90 hover:opacity-100 transition-opacity"
+                                        onerror="this.onerror=null; this.src='https://placehold.co/400x300/1e1e2e/64748b?text=Memory';"
+                                    />
+                                    <div class="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded text-[9px] flex items-center gap-1 font-bold text-rose-100 shadow-sm border border-white/10">
+                                        <i data-lucide="map-pin" class="w-2.5 h-2.5 text-rose-400"></i> ${card.city}
+                                    </div>
+                                    <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <i data-lucide="zoom-in" class="text-white w-6 h-6 drop-shadow-md"></i>
+                                    </div>
+                                </div>
+                                <div class="px-1">
+                                    <h3 class="font-bold text-slate-200 text-sm mb-1 text-shadow-sm">${card.title}</h3>
+                                    <p class="text-[10px] text-slate-400 leading-tight mb-2 text-justify line-clamp-2 font-light">${card.desc}</p>
+                                    <div class="flex gap-1 flex-wrap">
+                                        ${card.tags.map(tag => `<span class="text-[8px] bg-white/5 text-slate-400 border border-white/5 px-1.5 py-0.5 rounded-full">#${tag}</span>`).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    cardSlot.innerHTML = cardHTML;
+                    if (window.lucide) window.lucide.createIcons();
+                    audioEngine.playSuccessSound();
+                    
+                } catch (error) {
+                    console.error("Error creating card:", error);
+                } finally {
+                    defaultMsg.classList.remove('hidden');
+                    processingMsg.classList.add('hidden');
+                    isDispensing = false;
+                    exploreBtn.disabled = false;
+                }
+            }, 1500);
+        });
+
+        shareBtn.addEventListener('click', () => {
+            shareModal.classList.remove('hidden');
+            shareModal.classList.add('flex');
+        });
+
+        closeModalBtn.addEventListener('click', () => {
+            shareModal.classList.add('hidden');
+            shareModal.classList.remove('flex');
+        });
+
+        shareModal.addEventListener('click', (e) => {
+            if (e.target === shareModal) {
+                shareModal.classList.add('hidden');
+                shareModal.classList.remove('flex');
+            }
+        });
+
+        shareForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            shareModal.classList.add('hidden');
+            shareModal.classList.remove('flex');
+            document.getElementById('memory-input').value = '';
+            
+            showNotification("感謝你的分享！這段回憶已被販賣機收藏。");
+            try {
+                audioEngine.playSuccessSound();
+            } catch (e) {
+                console.warn("Audio failed:", e);
+            }
+        });
+
+        function showNotification(msg) {
+            notificationText.textContent = msg;
+            notification.classList.remove('hidden');
+            setTimeout(() => {
+                notification.classList.add('hidden');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
