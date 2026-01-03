@@ -1,652 +1,658 @@
-import { Component, OnInit, signal, computed, effect } from '@angular/core';
-import { CommonModule } from '@angular/common';
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🇹🇼 台灣美食熱情阿姨爭霸戰 🇹🇼</title>
+    <!-- 引入 Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #ff6b6b;
+            --secondary-color: #feca57;
+            --bg-color: #ffeaa7;
+            --text-color: #2d3436;
+        }
 
-// 定義食物資料介面
-interface Food {
-  name: string;
-  enName: string;
-  emoji: string;
-  desc: string;
-}
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
 
-@Component({
-  selector: 'app-root',
-  standalone: true,
-  imports: [CommonModule],
-  template: `
-    <div class="app-container">
-      <!-- Agent: The Soul of the App -->
-      <div class="agent-container">
-        <div class="agent-avatar">👩‍🍳</div>
-        <div class="agent-bubble" [class.pop]="agentPop()">
-          {{ agentText() }}
-        </div>
-      </div>
+        /* --- Agent Section --- */
+        #agent-container {
+            position: absolute;
+            top: 5%;
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+            z-index: 10;
+            pointer-events: none;
+        }
 
-      <!-- Main Interaction Area -->
-      @if (!champion) {
-        <div class="arena">
-          <!-- Left Card -->
-          <div class="food-card" 
-               [class.winner-anim]="animState === 'left-win'"
-               [class.loser-anim]="animState === 'right-win'"
-               (click)="selectWinner('left')"
-               (mouseenter)="onHover('left')">
-            <div class="card-bg-effect"></div>
-            
-            <!-- Food Image / Fallback Emoji -->
-            <div class="food-image-wrapper">
-              @if (!hasImageError(currentLeft().name)) {
-                <img [src]="getImageUrl(currentLeft())" 
-                     class="food-image" 
-                     alt="{{currentLeft().name}}"
-                     (error)="handleImageError(currentLeft().name)"
-                     loading="eager">
-              } @else {
-                <div class="emoji-fallback">{{ currentLeft().emoji }}</div>
-              }
-            </div>
-            
-            <div class="food-name">{{ currentLeft().name }}</div>
-          </div>
+        .agent-avatar {
+            font-size: 4rem;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
+            animation: float 3s ease-in-out infinite;
+        }
 
-          <!-- Right Card -->
-          <div class="food-card" 
-               [class.winner-anim]="animState === 'right-win'"
-               [class.loser-anim]="animState === 'left-win'"
-               (click)="selectWinner('right')"
-               (mouseenter)="onHover('right')">
-            <div class="card-bg-effect"></div>
-            
-            <!-- Food Image / Fallback Emoji -->
-            <div class="food-image-wrapper">
-              @if (!hasImageError(currentRight().name)) {
-                <img [src]="getImageUrl(currentRight())" 
-                     class="food-image" 
-                     alt="{{currentRight().name}}"
-                     (error)="handleImageError(currentRight().name)"
-                     loading="eager">
-              } @else {
-                <div class="emoji-fallback">{{ currentRight().emoji }}</div>
-              }
-            </div>
+        .agent-bubble {
+            background: white;
+            padding: 15px 25px;
+            border-radius: 30px;
+            border: 4px solid var(--primary-color);
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            margin-top: 10px;
+            position: relative;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: inline-block;
+        }
 
-            <div class="food-name">{{ currentRight().name }}</div>
-          </div>
-        </div>
+        .agent-bubble.pop {
+            transform: scale(1.05);
+        }
 
-        <!-- Progress & Context -->
-        <div class="progress-container">
-          <div class="round-info">{{ roundName() }}</div>
-          <div class="progress-dots">
-            @for (dot of dotsArray; track $index) {
-              <div class="dot" [class.active]="$index <= currentPairIndex() / 2"></div>
+        .agent-bubble::after {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 0 10px 10px;
+            border-style: solid;
+            border-color: transparent transparent var(--primary-color);
+        }
+
+        /* --- Battle Arena --- */
+        #arena {
+            display: flex;
+            width: 100%;
+            height: 60%;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .food-card {
+            flex: 1;
+            max-width: 400px;
+            height: 100%;
+            background: white;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* Image Wrapper & Fallback */
+        .food-image-wrapper {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 5px solid white;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+            z-index: 2;
+            transition: transform 0.2s;
+            background-color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .food-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .emoji-fallback {
+            font-size: 5rem;
+            line-height: 1;
+            display: none; /* Hidden by default */
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .emoji-fallback.big {
+            font-size: 8rem;
+        }
+
+        .food-name {
+            font-size: 1.5rem;
+            font-weight: 900;
+            margin-top: 25px;
+            z-index: 2;
+            text-align: center;
+        }
+
+        @media (min-width: 768px) {
+            .food-image-wrapper { width: 220px; height: 220px; }
+            .food-name { font-size: 2rem; }
+            .emoji-fallback { font-size: 7rem; }
+        }
+
+        .card-bg-effect {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, var(--secondary-color) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1;
+        }
+
+        /* Hover Effects */
+        @media (hover: hover) {
+            .food-card:hover {
+                transform: scale(1.05);
+                box-shadow: 0 20px 40px rgba(0,0,0,0.2);
             }
-          </div>
-        </div>
-      }
+            .food-card:hover .food-image-wrapper {
+                animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both infinite; 
+            }
+            .food-card:hover .card-bg-effect {
+                opacity: 0.5;
+            }
+        }
 
-      <!-- Champion Display -->
-      @if (champion) {
-        <div class="champion-screen">
-          <h1 class="champion-title">🏆 台灣美食冠軍 🏆</h1>
-          
-          <div class="champion-image-wrapper">
-             @if (!hasImageError(champion!.name)) {
-               <img [src]="getImageUrl(champion!)" 
-                    class="food-image" 
-                    alt="Champion"
-                    (error)="handleImageError(champion!.name)">
-             } @else {
-               <div class="emoji-fallback big">{{ champion!.emoji }}</div>
-             }
-          </div>
-          
-          <h2 class="champion-name">{{ champion?.name }}</h2>
-          <button class="btn-restart" (click)="restartGame()">再玩一次 (肚子餓了)</button>
+        /* Animations */
+        .winner-anim {
+            animation: zoomAndGlow 0.8s forwards !important;
+            z-index: 10;
+        }
+
+        .loser-anim {
+            animation: explodeAndFade 0.8s forwards !important;
+            pointer-events: none;
+        }
+
+        /* --- Progress --- */
+        #progress-container {
+            position: absolute;
+            bottom: 5%;
+            width: 80%;
+            text-align: center;
+        }
+
+        #round-info {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #636e72;
+        }
+
+        .progress-dots {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            background-color: #dfe6e9;
+            border-radius: 50%;
+        }
+
+        .dot.active {
+            background-color: var(--primary-color);
+        }
+
+        /* --- Champion Screen --- */
+        #champion-screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            animation: popIn 0.5s ease-out;
+            text-align: center;
+            width: 100%;
+        }
+
+        .champion-title {
+            color: var(--primary-color);
+            font-size: 2.5rem;
+            margin-bottom: 0;
+        }
+
+        .champion-image-wrapper {
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 8px solid white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin: 30px 0;
+            animation: spin 20s linear infinite; /* Slower spin for photo */
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        #champion-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .champion-name {
+            font-size: 2rem;
+            margin-bottom: 30px;
+        }
+
+        .btn-restart {
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+            transition: transform 0.1s;
+            font-family: inherit;
+            font-weight: bold;
+        }
+        .btn-restart:active { transform: scale(0.95); }
+
+        /* Keyframes */
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0) scale(1.1); }
+            20%, 80% { transform: translate3d(2px, 0, 0) scale(1.1); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0) scale(1.1); }
+            40%, 60% { transform: translate3d(4px, 0, 0) scale(1.1); }
+        }
+        @keyframes zoomAndGlow {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); background-color: #ffeaa7; }
+            100% { transform: scale(1); background-color: white; }
+        }
+        @keyframes explodeAndFade {
+            0% { transform: scale(1); opacity: 1; filter: blur(0px); }
+            50% { transform: scale(0.8) rotate(10deg); opacity: 0.5; filter: blur(4px); }
+            100% { transform: scale(0) rotate(20deg); opacity: 0; filter: blur(10px); }
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        @keyframes popIn {
+            0% { transform: scale(0); }
+            80% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <!-- Agent: The Soul of the App -->
+    <div id="agent-container">
+        <div class="agent-avatar">👩‍🍳</div>
+        <div class="agent-bubble" id="agent-bubble">
+            哎唷！這兩樣看起來都很好吃捏！
         </div>
-      }
     </div>
-  `,
-  styles: [`
-    /* Import Google Fonts */
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
 
-    :host {
-      --primary-color: #ff6b6b;
-      --secondary-color: #feca57;
-      --bg-color: #ffeaa7;
-      --text-color: #2d3436;
-      
-      display: block;
-      font-family: 'Noto Sans TC', sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-color);
-      height: 100vh;
-      overflow: hidden;
-    }
+    <!-- Main Interaction Area -->
+    <div id="arena">
+        <!-- Left Card -->
+        <div class="food-card" id="left-card" onclick="selectWinner('left')" onmouseenter="onHover('left')">
+            <div class="card-bg-effect"></div>
+            
+            <div class="food-image-wrapper">
+                <img id="left-image" class="food-image" src="" alt="Food" onerror="handleImageError('left')">
+                <div id="left-emoji" class="emoji-fallback"></div>
+            </div>
+            
+            <div class="food-name" id="left-name">牛肉麵</div>
+        </div>
 
-    .app-container {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-    }
+        <!-- Right Card -->
+        <div class="food-card" id="right-card" onclick="selectWinner('right')" onmouseenter="onHover('right')">
+            <div class="card-bg-effect"></div>
+            
+            <div class="food-image-wrapper">
+                <img id="right-image" class="food-image" src="" alt="Food" onerror="handleImageError('right')">
+                <div id="right-emoji" class="emoji-fallback"></div>
+            </div>
 
-    /* --- Agent Section --- */
-    .agent-container {
-      position: absolute;
-      top: 5%;
-      width: 90%;
-      max-width: 600px;
-      text-align: center;
-      z-index: 10;
-      pointer-events: none;
-    }
+            <div class="food-name" id="right-name">珍珠奶茶</div>
+        </div>
+    </div>
 
-    .agent-avatar {
-      font-size: 4rem;
-      filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
-      animation: float 3s ease-in-out infinite;
-    }
+    <!-- Champion Display -->
+    <div id="champion-screen">
+        <h1 class="champion-title">🏆 台灣美食冠軍 🏆</h1>
+        
+        <div class="champion-image-wrapper">
+            <img id="champion-image" src="" alt="Champion" onerror="handleChampionImageError()">
+            <div id="champion-emoji" class="emoji-fallback big"></div>
+        </div>
+        
+        <h2 class="champion-name" id="champion-name"></h2>
+        <button class="btn-restart" onclick="restartGame()">再玩一次 (肚子餓了)</button>
+    </div>
 
-    .agent-bubble {
-      background: white;
-      padding: 15px 25px;
-      border-radius: 30px;
-      border: 4px solid var(--primary-color);
-      font-size: 1.2rem;
-      font-weight: bold;
-      color: var(--primary-color);
-      box-shadow: 0 10px 20px rgba(0,0,0,0.15);
-      margin-top: 10px;
-      position: relative;
-      transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-    
-    .agent-bubble.pop {
-      transform: scale(1.05);
-    }
+    <!-- Progress & Context -->
+    <div id="progress-container">
+        <div id="round-info">32 強賽</div>
+        <div class="progress-dots" id="dots-container"></div>
+    </div>
 
-    .agent-bubble::after {
-      content: '';
-      position: absolute;
-      top: -10px;
-      left: 50%;
-      transform: translateX(-50%);
-      border-width: 0 10px 10px;
-      border-style: solid;
-      border-color: transparent transparent var(--primary-color);
-    }
+    <script>
+        // Data: 32 Taiwanese Foods
+        const allFoods = [
+            { name: "滷肉飯", enName: "Braised Pork Rice", emoji: "🍚", desc: "肥瘦相間，入口即化！" },
+            { name: "珍珠奶茶", enName: "Bubble Tea", emoji: "🧋", desc: "台灣之光，Q彈有勁！" },
+            { name: "臭豆腐", enName: "Stinky Tofu", emoji: "😤", desc: "越臭越香，外酥內嫩！" },
+            { name: "雞排", enName: "Fried Chicken Fillet", emoji: "🍗", desc: "比臉還大，罪惡感滿滿！" },
+            { name: "牛肉麵", enName: "Beef Noodle Soup", emoji: "🍜", desc: "湯頭濃郁，肉塊厚實！" },
+            { name: "小籠包", enName: "Xiao Long Bao", emoji: "🥟", desc: "皮薄餡多，小心燙口！" },
+            { name: "蚵仔煎", enName: "Oyster Omelet", emoji: "🦪", desc: "鮮甜肥美，醬汁是靈魂！" },
+            { name: "芒果冰", enName: "Mango Shaved Ice", emoji: "🥭", desc: "夏日必備，酸甜消暑！" },
+            { name: "大腸包小腸", enName: "Taiwanese Sausage", emoji: "🌭", desc: "台式熱狗，炭火香氣！" },
+            { name: "蔥抓餅", enName: "Scallion Pancake", emoji: "🥞", desc: "層次分明，酥脆掉渣！" },
+            { name: "滷味", enName: "Braised Dishes", emoji: "🥚", desc: "宵夜首選，樣樣入味！" },
+            { name: "鹽酥雞", enName: "Popcorn Chicken", emoji: "🍖", desc: "九層塔香，一口接一口！" },
+            { name: "鳳梨酥", enName: "Pineapple Cake", emoji: "🍍", desc: "金黃內餡，伴手禮之王！" },
+            { name: "豆花", enName: "Tofu Pudding", emoji: "🍮", desc: "綿密滑順，花生軟爛！" },
+            { name: "豬血糕", enName: "Pig Blood Cake", emoji: "🍢", desc: "口感Q糯，沾花生粉絕配！" },
+            { name: "刈包", enName: "Gua Bao", emoji: "🍔", desc: "台式漢堡，肥肉加花生粉！" },
+            { name: "地瓜球", enName: "Sweet Potato Balls", emoji: "🍠", desc: "外酥內空，夜市必買！" },
+            { name: "潤餅", enName: "Popiah", emoji: "🌯", desc: "清爽豐富，一捲滿足！" },
+            { name: "擔仔麵", enName: "Danzai Noodles", emoji: "🍜", desc: "肉燥蝦湯，百年滋味！" },
+            { name: "碗粿", enName: "Salty Rice Pudding", emoji: "🥣", desc: "米香濃郁，醬油膏鹹甜！" },
+            { name: "鐵蛋", enName: "Iron Egg", emoji: "🌑", desc: "越嚼越香，淡水名產！" },
+            { name: "太陽餅", enName: "Sun Cake", emoji: "☀️", desc: "酥皮麥芽，台中驕傲！" },
+            { name: "棺材板", enName: "Coffin Bread", emoji: "🍞", desc: "炸吐司裝濃湯，口感豐富！" },
+            { name: "肉圓", enName: "Ba Wan", emoji: "🍘", desc: "Q皮肉餡，炸蒸皆宜！" },
+            { name: "薑母鴨", enName: "Ginger Duck", emoji: "🥘", desc: "冬日進補，全身暖呼呼！" },
+            { name: "羊肉爐", enName: "Mutton Hot Pot", emoji: "🍲", desc: "藥膳湯頭，溫潤滋補！" },
+            { name: "剉冰", enName: "Shaved Ice", emoji: "🍧", desc: "配料自選，淋上黑糖水！" },
+            { name: "木瓜牛奶", enName: "Papaya Milk", emoji: "🥛", desc: "濃醇香滑，完美比例！" },
+            { name: "雞肉飯", enName: "Turkey Rice", emoji: "🍚", desc: "雞油拌飯，簡單美味！" },
+            { name: "胡椒餅", enName: "Pepper Bun", emoji: "🥯", desc: "炭烤焦香，肉汁爆發！" },
+            { name: "蛋餅", enName: "Egg Pancake Roll", emoji: "🍳", desc: "早餐經典，口味百變！" },
+            { name: "麵線", enName: "Oyster Vermicelli", emoji: "🍜", desc: "大腸蚵仔，勾芡滑順！" }
+        ];
 
-    /* --- Battle Arena --- */
-    .arena {
-      display: flex;
-      width: 100%;
-      height: 60%;
-      align-items: center;
-      justify-content: center;
-      gap: 20px;
-      padding: 20px;
-      box-sizing: border-box;
-    }
+        const auntieQuotes = {
+            start: ["來來來！這兩樣你選哪一樣？阿姨請客...才怪！", "哎唷！這兩個都很厲害捏！", "選不出來嗎？閉著眼睛按下去啦！"],
+            hover: ["這個好！這個真的好！", "選我！我超多汁的！", "你看那個皮，嘖嘖嘖！", "阿姨跟你說，這個是招牌！"],
+            click: ["好眼光！阿姨也喜歡這個！", "真的假的？你竟然選這個！", "沒錯！這個才是王道！"]
+        };
 
-    .food-card {
-      flex: 1;
-      max-width: 400px;
-      height: 100%;
-      background: white;
-      border-radius: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      position: relative;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-      transition: transform 0.2s;
-      overflow: hidden;
-      user-select: none;
-    }
+        // State Variables
+        let currentRoundCandidates = [];
+        let nextRoundCandidates = [];
+        let currentPairIndex = 0;
+        let roundName = "32 強賽";
+        let isAnimating = false;
+        let champion = null;
+        let audioCtx = null;
 
-    /* Image Wrapper & Fallback */
-    .food-image-wrapper {
-      width: 140px;
-      height: 140px;
-      border-radius: 50%;
-      overflow: hidden;
-      border: 5px solid white;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.15);
-      z-index: 2;
-      transition: transform 0.2s;
-      background-color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+        // Image URL Helper (Bing Thumbnail)
+        function getImageUrl(food) {
+            const query = `${food.name} 台灣美食`;
+            return `https://tse2.mm.bing.net/th?q=${encodeURIComponent(query)}&w=500&h=500&c=7&rs=1`;
+        }
 
-    .food-image {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
+        // Handle Image Errors (Fallback to Emoji)
+        function handleImageError(side) {
+            console.log(`Image failed for ${side}`);
+            document.getElementById(`${side}-image`).style.display = 'none';
+            document.getElementById(`${side}-emoji`).style.display = 'block';
+        }
 
-    .emoji-fallback {
-      font-size: 5rem;
-      line-height: 1;
-    }
-    
-    .emoji-fallback.big {
-      font-size: 8rem;
-    }
+        function handleChampionImageError() {
+            document.getElementById('champion-image').style.display = 'none';
+            document.getElementById('champion-emoji').style.display = 'block';
+        }
 
-    .food-name {
-      font-size: 1.5rem;
-      font-weight: 900;
-      margin-top: 25px;
-      z-index: 2;
-      text-align: center;
-    }
+        function initGame() {
+            // Shuffle
+            currentRoundCandidates = [...allFoods].sort(() => Math.random() - 0.5).slice(0, 32);
+            nextRoundCandidates = [];
+            currentPairIndex = 0;
+            roundName = "32 強賽";
+            champion = null;
+            isAnimating = false;
 
-    @media (min-width: 768px) {
-      .food-image-wrapper { width: 220px; height: 220px; }
-      .food-name { font-size: 2rem; }
-      .emoji-fallback { font-size: 7rem; }
-    }
+            // UI Reset
+            document.getElementById('champion-screen').style.display = 'none';
+            document.getElementById('arena').style.display = 'flex';
+            document.getElementById('progress-container').style.display = 'block';
+            document.getElementById('agent-container').style.display = 'block';
 
-    .card-bg-effect {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: radial-gradient(circle, var(--secondary-color) 0%, transparent 70%);
-      opacity: 0;
-      transition: opacity 0.3s;
-      z-index: 1;
-    }
+            updateAgent(getRandomQuote(auntieQuotes.start));
+            renderPair();
+        }
 
-    /* Hover Effects */
-    @media (hover: hover) {
-      .food-card:hover {
-        transform: scale(1.05);
-        box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-      }
-      .food-card:hover .food-image-wrapper {
-        animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both infinite; 
-      }
-      .food-card:hover .card-bg-effect {
-        opacity: 0.5;
-      }
-    }
+        function renderPair() {
+            if (champion) return;
 
-    /* Animations */
-    .winner-anim {
-      animation: zoomAndGlow 0.8s forwards !important;
-      z-index: 10;
-    }
+            const item1 = currentRoundCandidates[currentPairIndex];
+            const item2 = currentRoundCandidates[currentPairIndex + 1];
 
-    .loser-anim {
-      animation: explodeAndFade 0.8s forwards !important;
-      pointer-events: none;
-    }
+            // Reset Cards Styles
+            document.getElementById('left-card').className = 'food-card';
+            document.getElementById('right-card').className = 'food-card';
 
-    /* --- Progress --- */
-    .progress-container {
-      position: absolute;
-      bottom: 5%;
-      width: 80%;
-      text-align: center;
-    }
+            // Left
+            const leftImg = document.getElementById('left-image');
+            const leftEmoji = document.getElementById('left-emoji');
+            
+            // Reset to show image first, hide emoji
+            leftImg.style.display = 'block';
+            leftEmoji.style.display = 'none';
+            leftEmoji.innerText = item1.emoji;
+            // Set Src triggers load
+            leftImg.src = getImageUrl(item1);
+            
+            document.getElementById('left-name').innerText = item1.name;
 
-    .round-info {
-      font-size: 1.5rem;
-      font-weight: bold;
-      margin-bottom: 10px;
-      color: #636e72;
-    }
+            // Right
+            const rightImg = document.getElementById('right-image');
+            const rightEmoji = document.getElementById('right-emoji');
+            
+            rightImg.style.display = 'block';
+            rightEmoji.style.display = 'none';
+            rightEmoji.innerText = item2.emoji;
+            rightImg.src = getImageUrl(item2);
 
-    .progress-dots {
-      display: flex;
-      justify-content: center;
-      gap: 5px;
-    }
+            document.getElementById('right-name').innerText = item2.name;
 
-    .dot {
-      width: 10px;
-      height: 10px;
-      background-color: #dfe6e9;
-      border-radius: 50%;
-    }
+            // Progress
+            document.getElementById('round-info').innerText = roundName;
+            updateDots();
+        }
 
-    .dot.active {
-      background-color: var(--primary-color);
-    }
+        function updateDots() {
+            const container = document.getElementById('dots-container');
+            container.innerHTML = '';
+            const totalPairs = Math.ceil(currentRoundCandidates.length / 2);
+            const currentPair = Math.floor(currentPairIndex / 2);
 
-    /* --- Champion Screen --- */
-    .champion-screen {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      animation: popIn 0.5s ease-out;
-      text-align: center;
-    }
+            for (let i = 0; i < totalPairs; i++) {
+                const dot = document.createElement('div');
+                dot.className = `dot ${i <= currentPair ? 'active' : ''}`;
+                container.appendChild(dot);
+            }
+        }
 
-    .champion-title {
-      color: var(--primary-color);
-      font-size: 2.5rem;
-      margin-bottom: 0;
-    }
+        function selectWinner(side) {
+            if (isAnimating) return;
+            isAnimating = true;
+            playSound('select');
 
-    .champion-image-wrapper {
-      width: 250px;
-      height: 250px;
-      border-radius: 50%;
-      overflow: hidden;
-      border: 8px solid white;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-      margin: 30px 0;
-      animation: spin 20s linear infinite; /* Slower spin for photo */
-      background: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+            // Agent feedback
+            updateAgent(getRandomQuote(auntieQuotes.click));
 
-    .champion-name {
-      font-size: 2rem;
-      margin-bottom: 30px;
-    }
+            // Logic
+            const winnerItem = side === 'left' ? currentRoundCandidates[currentPairIndex] : currentRoundCandidates[currentPairIndex + 1];
+            nextRoundCandidates.push(winnerItem);
 
-    .btn-restart {
-      padding: 15px 40px;
-      font-size: 1.5rem;
-      background: var(--primary-color);
-      color: white;
-      border: none;
-      border-radius: 50px;
-      cursor: pointer;
-      box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
-      transition: transform 0.1s;
-      font-family: inherit;
-      font-weight: bold;
-    }
-    .btn-restart:active { transform: scale(0.95); }
+            // Animation classes
+            const winnerCard = document.getElementById(`${side}-card`);
+            const loserCard = document.getElementById(side === 'left' ? 'right-card' : 'left-card');
 
-    /* Keyframes */
-    @keyframes shake {
-      10%, 90% { transform: translate3d(-1px, 0, 0) scale(1.1); }
-      20%, 80% { transform: translate3d(2px, 0, 0) scale(1.1); }
-      30%, 50%, 70% { transform: translate3d(-4px, 0, 0) scale(1.1); }
-      40%, 60% { transform: translate3d(4px, 0, 0) scale(1.1); }
-    }
-    @keyframes zoomAndGlow {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.1); background-color: #ffeaa7; }
-      100% { transform: scale(1); background-color: white; }
-    }
-    @keyframes explodeAndFade {
-      0% { transform: scale(1); opacity: 1; filter: blur(0px); }
-      50% { transform: scale(0.8) rotate(10deg); opacity: 0.5; filter: blur(4px); }
-      100% { transform: scale(0) rotate(20deg); opacity: 0; filter: blur(10px); }
-    }
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
-    }
-    @keyframes popIn {
-      0% { transform: scale(0); }
-      80% { transform: scale(1.1); }
-      100% { transform: scale(1); }
-    }
-    @keyframes spin { 100% { transform: rotate(360deg); } }
-  `]
-})
-export class App implements OnInit {
-  // --- Data ---
-  // Simplified: we only need name, enName, emoji, desc
-  // searchTerms removed as we use direct name search now
-  readonly allFoods: Food[] = [
-    { name: "滷肉飯", enName: "Braised Pork Rice", emoji: "🍚", desc: "肥瘦相間，入口即化！" },
-    { name: "珍珠奶茶", enName: "Bubble Tea", emoji: "🧋", desc: "台灣之光，Q彈有勁！" },
-    { name: "臭豆腐", enName: "Stinky Tofu", emoji: "😤", desc: "越臭越香，外酥內嫩！" },
-    { name: "雞排", enName: "Fried Chicken Fillet", emoji: "🍗", desc: "比臉還大，罪惡感滿滿！" },
-    { name: "牛肉麵", enName: "Beef Noodle Soup", emoji: "🍜", desc: "湯頭濃郁，肉塊厚實！" },
-    { name: "小籠包", enName: "Xiao Long Bao", emoji: "🥟", desc: "皮薄餡多，小心燙口！" },
-    { name: "蚵仔煎", enName: "Oyster Omelet", emoji: "🦪", desc: "鮮甜肥美，醬汁是靈魂！" },
-    { name: "芒果冰", enName: "Mango Shaved Ice", emoji: "🥭", desc: "夏日必備，酸甜消暑！" },
-    { name: "大腸包小腸", enName: "Taiwanese Sausage", emoji: "🌭", desc: "台式熱狗，炭火香氣！" },
-    { name: "蔥抓餅", enName: "Scallion Pancake", emoji: "🥞", desc: "層次分明，酥脆掉渣！" },
-    { name: "滷味", enName: "Braised Dishes", emoji: "🥚", desc: "宵夜首選，樣樣入味！" },
-    { name: "鹽酥雞", enName: "Popcorn Chicken", emoji: "🍖", desc: "九層塔香，一口接一口！" },
-    { name: "鳳梨酥", enName: "Pineapple Cake", emoji: "🍍", desc: "金黃內餡，伴手禮之王！" },
-    { name: "豆花", enName: "Tofu Pudding", emoji: "🍮", desc: "綿密滑順，花生軟爛！" },
-    { name: "豬血糕", enName: "Pig Blood Cake", emoji: "🍢", desc: "口感Q糯，沾花生粉絕配！" },
-    { name: "刈包", enName: "Gua Bao", emoji: "🍔", desc: "台式漢堡，肥肉加花生粉！" },
-    { name: "地瓜球", enName: "Sweet Potato Balls", emoji: "🍠", desc: "外酥內空，夜市必買！" },
-    { name: "潤餅", enName: "Popiah", emoji: "🌯", desc: "清爽豐富，一捲滿足！" },
-    { name: "擔仔麵", enName: "Danzai Noodles", emoji: "🍜", desc: "肉燥蝦湯，百年滋味！" },
-    { name: "碗粿", enName: "Salty Rice Pudding", emoji: "🥣", desc: "米香濃郁，醬油膏鹹甜！" },
-    { name: "鐵蛋", enName: "Iron Egg", emoji: "🌑", desc: "越嚼越香，淡水名產！" },
-    { name: "太陽餅", enName: "Sun Cake", emoji: "☀️", desc: "酥皮麥芽，台中驕傲！" },
-    { name: "棺材板", enName: "Coffin Bread", emoji: "🍞", desc: "炸吐司裝濃湯，口感豐富！" },
-    { name: "肉圓", enName: "Ba Wan", emoji: "🍘", desc: "Q皮肉餡，炸蒸皆宜！" },
-    { name: "薑母鴨", enName: "Ginger Duck", emoji: "🥘", desc: "冬日進補，全身暖呼呼！" },
-    { name: "羊肉爐", enName: "Mutton Hot Pot", emoji: "🍲", desc: "藥膳湯頭，溫潤滋補！" },
-    { name: "剉冰", enName: "Shaved Ice", emoji: "🍧", desc: "配料自選，淋上黑糖水！" },
-    { name: "木瓜牛奶", enName: "Papaya Milk", emoji: "🥛", desc: "濃醇香滑，完美比例！" },
-    { name: "雞肉飯", enName: "Turkey Rice", emoji: "🍚", desc: "雞油拌飯，簡單美味！" },
-    { name: "胡椒餅", enName: "Pepper Bun", emoji: "🥯", desc: "炭烤焦香，肉汁爆發！" },
-    { name: "蛋餅", enName: "Egg Pancake Roll", emoji: "🍳", desc: "早餐經典，口味百變！" },
-    { name: "麵線", enName: "Oyster Vermicelli", emoji: "🍜", desc: "大腸蚵仔，勾芡滑順！" }
-  ];
+            winnerCard.classList.add('winner-anim');
+            loserCard.classList.add('loser-anim');
 
-  readonly auntieQuotes = {
-    start: ["來來來！這兩樣你選哪一樣？阿姨請客...才怪！", "哎唷！這兩個都很厲害捏！", "選不出來嗎？閉著眼睛按下去啦！"],
-    hover: ["這個好！這個真的好！", "選我！我超多汁的！", "你看那個皮，嘖嘖嘖！", "阿姨跟你說，這個是招牌！"],
-    click: ["好眼光！阿姨也喜歡這個！", "真的假的？你竟然選這個！", "沒錯！這個才是王道！"]
-  };
+            setTimeout(() => {
+                advancePair();
+            }, 800);
+        }
 
-  // --- State Signals ---
-  currentRoundCandidates = signal<Food[]>([]);
-  nextRoundCandidates = signal<Food[]>([]);
-  currentPairIndex = signal<number>(0);
-  roundName = signal<string>("32 強賽");
-  agentText = signal<string>("");
-  agentPop = signal<boolean>(false);
-  
-  // Track failed images
-  imageErrors = signal<Set<string>>(new Set());
-  
-  // Animation State: 'idle' | 'left-win' | 'right-win'
-  animState = 'idle';
-  isAnimating = false;
-  
-  // Champion
-  champion: Food | null = null;
-  
-  // Dots Helper
-  get dotsArray() {
-    return new Array(Math.ceil(this.currentRoundCandidates().length / 2));
-  }
+        function advancePair() {
+            isAnimating = false;
+            currentPairIndex += 2;
 
-  // Computed Values for current pair
-  currentLeft = computed(() => this.currentRoundCandidates()[this.currentPairIndex()]);
-  currentRight = computed(() => this.currentRoundCandidates()[this.currentPairIndex() + 1]);
+            if (currentPairIndex >= currentRoundCandidates.length) {
+                advanceRound();
+            } else {
+                renderPair();
+            }
+        }
 
-  // Audio Context
-  private audioCtx: AudioContext | null = null;
+        function advanceRound() {
+            if (nextRoundCandidates.length === 1) {
+                showChampion(nextRoundCandidates[0]);
+                return;
+            }
 
-  ngOnInit() {
-    this.initGame();
-  }
+            currentRoundCandidates = [...nextRoundCandidates];
+            nextRoundCandidates = [];
+            currentPairIndex = 0;
 
-  // Helper to generate Real Food URL from Bing Thumbnail Search
-  // 這是目前最穩定能抓到「真實網路圖片」的方法
-  // 使用 Bing 的縮圖服務，搜尋「食物名稱 + 台灣美食」
-  getImageUrl(food: Food): string {
-    // 使用中文名稱搜尋最準確
-    const query = `${food.name} 台灣美食`; 
-    // tse2.mm.bing.net 是一個穩定的縮圖服務
-    // c=7: 裁切並縮放 (Smart crop)
-    // rs=1: 縮放
-    return `https://tse2.mm.bing.net/th?q=${encodeURIComponent(query)}&w=500&h=500&c=7&rs=1`;
-  }
-  
-  // Handle image error
-  handleImageError(foodName: string) {
-    console.log(`Image failed for: ${foodName}, falling back to emoji.`);
-    this.imageErrors.update(set => {
-      const newSet = new Set(set);
-      newSet.add(foodName);
-      return newSet;
-    });
-  }
+            const count = currentRoundCandidates.length;
+            if (count === 16) roundName = "16 強激戰";
+            else if (count === 8) roundName = "8 強爭霸";
+            else if (count === 4) roundName = "4 強準決賽";
+            else if (count === 2) roundName = "冠亞軍決賽";
 
-  hasImageError(foodName: string): boolean {
-    return this.imageErrors().has(foodName);
-  }
+            updateAgent(`恭喜進入 ${roundName}！越來越難選了對吧？`);
+            renderPair();
+        }
 
-  initGame() {
-    // Shuffle
-    const shuffled = [...this.allFoods].sort(() => Math.random() - 0.5).slice(0, 32);
-    this.currentRoundCandidates.set(shuffled);
-    this.nextRoundCandidates.set([]);
-    this.currentPairIndex.set(0);
-    this.roundName.set("32 強賽");
-    this.champion = null;
-    this.animState = 'idle';
-    this.isAnimating = false;
-    this.imageErrors.set(new Set()); // Reset errors
-    
-    this.updateAgent(this.getRandomQuote(this.auntieQuotes.start));
-  }
+        function showChampion(item) {
+            champion = item;
+            document.getElementById('arena').style.display = 'none';
+            document.getElementById('progress-container').style.display = 'none';
+            // Agent can stay or go, let's keep her hidden to focus on champion
+            document.getElementById('agent-container').style.display = 'none';
 
-  // Interaction Logic
-  selectWinner(side: 'left' | 'right') {
-    if (this.isAnimating) return;
-    this.isAnimating = true;
-    this.playSound('select');
+            const screen = document.getElementById('champion-screen');
+            screen.style.display = 'flex';
+            
+            document.getElementById('champion-name').innerText = item.name;
+            
+            // Champion Image
+            const img = document.getElementById('champion-image');
+            const emoji = document.getElementById('champion-emoji');
+            
+            img.style.display = 'block';
+            emoji.style.display = 'none';
+            emoji.innerText = item.emoji;
+            img.src = getImageUrl(item);
+        }
 
-    // Set animation state
-    this.animState = side === 'left' ? 'left-win' : 'right-win';
+        function restartGame() {
+            initGame();
+        }
 
-    // Agent Feedback
-    this.updateAgent(this.getRandomQuote(this.auntieQuotes.click));
+        function onHover(side) {
+            if (isAnimating) return;
+            playSound('hover');
+            
+            const item = side === 'left' ? currentRoundCandidates[currentPairIndex] : currentRoundCandidates[currentPairIndex + 1];
+            updateAgent(`${item.desc} ${getRandomQuote(auntieQuotes.hover)}`);
+        }
 
-    // Determine winner logic
-    const winnerItem = side === 'left' ? this.currentLeft() : this.currentRight();
-    this.nextRoundCandidates.update(arr => [...arr, winnerItem]);
+        function updateAgent(text) {
+            const bubble = document.getElementById('agent-bubble');
+            bubble.classList.add('pop');
+            setTimeout(() => bubble.classList.remove('pop'), 200);
+            bubble.innerText = text;
+        }
 
-    // Delay for animation
-    setTimeout(() => {
-      this.advancePair();
-    }, 800);
-  }
+        function getRandomQuote(arr) {
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
 
-  advancePair() {
-    this.animState = 'idle';
-    this.isAnimating = false;
+        // Audio Logic
+        function playSound(type) {
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
 
-    const nextIndex = this.currentPairIndex() + 2;
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
 
-    if (nextIndex >= this.currentRoundCandidates().length) {
-      this.advanceRound();
-    } else {
-      this.currentPairIndex.set(nextIndex);
-    }
-  }
+                const now = audioCtx.currentTime;
 
-  advanceRound() {
-    const survivors = this.nextRoundCandidates();
-    
-    if (survivors.length === 1) {
-      // We have a winner!
-      this.champion = survivors[0];
-      return;
-    }
+                if (type === 'hover') {
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(400, now);
+                    oscillator.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+                    gainNode.gain.setValueAtTime(0.05, now);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                    oscillator.start(now);
+                    oscillator.stop(now + 0.1);
+                } else if (type === 'select') {
+                    oscillator.type = 'triangle';
+                    oscillator.frequency.setValueAtTime(300, now);
+                    oscillator.frequency.exponentialRampToValueAtTime(800, now + 0.3);
+                    gainNode.gain.setValueAtTime(0.1, now);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                    oscillator.start(now);
+                    oscillator.stop(now + 0.3);
+                }
+            } catch (e) {
+                console.warn('Audio play failed', e);
+            }
+        }
 
-    // Next Round Setup
-    this.currentRoundCandidates.set(survivors);
-    this.nextRoundCandidates.set([]);
-    this.currentPairIndex.set(0);
+        // Start Game
+        initGame();
 
-    // Update Round Name
-    const count = survivors.length;
-    let name = "";
-    if (count === 16) name = "16 強激戰";
-    else if (count === 8) name = "8 強爭霸";
-    else if (count === 4) name = "4 強準決賽";
-    else if (count === 2) name = "冠亞軍決賽";
-    this.roundName.set(name);
-
-    this.updateAgent(`恭喜進入 ${name}！越來越難選了對吧？`);
-  }
-
-  restartGame() {
-    this.initGame();
-  }
-
-  onHover(side: 'left' | 'right') {
-    if (this.isAnimating) return;
-    this.playSound('hover');
-    
-    const item = side === 'left' ? this.currentLeft() : this.currentRight();
-    const quote = this.getRandomQuote(this.auntieQuotes.hover);
-    this.updateAgent(`${item.desc} ${quote}`);
-  }
-
-  // Agent Helper
-  updateAgent(text: string) {
-    this.agentPop.set(true);
-    setTimeout(() => this.agentPop.set(false), 200);
-    this.agentText.set(text);
-  }
-
-  getRandomQuote(arr: string[]): string {
-    return arr[Math.floor(Math.random() * arr.length)];
-  }
-
-  // Audio Logic (Synthetic sounds)
-  playSound(type: 'hover' | 'select') {
-    try {
-      if (!this.audioCtx) {
-        this.audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
-      if (this.audioCtx.state === 'suspended') {
-        this.audioCtx.resume();
-      }
-
-      const oscillator = this.audioCtx.createOscillator();
-      const gainNode = this.audioCtx.createGain();
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioCtx.destination);
-
-      const now = this.audioCtx.currentTime;
-
-      if (type === 'hover') {
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(400, now);
-        oscillator.frequency.exponentialRampToValueAtTime(600, now + 0.1);
-        gainNode.gain.setValueAtTime(0.05, now);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-        oscillator.start(now);
-        oscillator.stop(now + 0.1);
-      } else if (type === 'select') {
-        oscillator.type = 'triangle';
-        oscillator.frequency.setValueAtTime(300, now);
-        oscillator.frequency.exponentialRampToValueAtTime(800, now + 0.3);
-        gainNode.gain.setValueAtTime(0.1, now);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-        oscillator.start(now);
-        oscillator.stop(now + 0.3);
-      }
-    } catch (e) {
-      console.warn('Audio play failed', e);
-    }
-  }
-}
+    </script>
+</body>
+</html>
