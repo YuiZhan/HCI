@@ -3,53 +3,215 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>下載測試頁面</title>
+    <title>Survival vs Creative Mode</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
-        body {
-            font-family: 'Noto Sans TC', sans-serif;
+        /* 自定義滑桿樣式 */
+        input[type=range] {
+            -webkit-appearance: none; 
+            appearance: none;
+            width: 100%; 
+            background: transparent; 
         }
-        .float-anim {
-            animation: float 3s ease-in-out infinite;
+
+        input[type=range]:focus {
+            outline: none; 
         }
-        @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
-            100% { transform: translateY(0px); }
+
+        /* 滑軌 (Track) */
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            backdrop-filter: blur(5px);
+        }
+        
+        input[type=range]::-moz-range-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+        }
+
+        /* 滑塊 (Thumb) */
+        input[type=range]::-webkit-slider-thumb {
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #ffffff;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -8px; /* 修正垂直置中 */
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+        }
+
+        input[type=range]::-moz-range-thumb {
+            height: 24px;
+            width: 24px;
+            border: none;
+            border-radius: 50%;
+            background: #ffffff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+        }
+
+        input[type=range]:active::-webkit-slider-thumb {
+            transform: scale(1.2);
+        }
+
+        /* 內容容器過渡動畫 */
+        .content-wrapper {
+            transition: transform 0.3s ease-out;
+        }
+        
+        /* 避免選取文字影響體驗 */
+        .noselect {
+            user-select: none;
+            -webkit-user-select: none;
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-blue-100 to-purple-200 min-h-screen flex items-center justify-center p-4">
+<body class="h-screen w-full overflow-hidden flex flex-col items-center justify-center transition-colors duration-75 noselect" id="appBody">
 
-    <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center border-4 border-white/50">
-        <div class="mb-6 flex justify-center">
-            <div class="bg-blue-500 text-white p-4 rounded-full float-anim shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
+    <!-- 主要內容區塊 -->
+    <div class="content-wrapper text-center w-full max-w-md px-8 relative z-10">
+        
+        <!-- 標題區域 -->
+        <h1 id="mainTitle" class="text-4xl md:text-5xl font-bold mb-2 tracking-wider transition-all duration-300 text-white drop-shadow-md">
+            SURVIVAL
+        </h1>
+        <p id="subTitle" class="text-xl md:text-2xl mb-12 font-light opacity-90 transition-all duration-300 text-gray-200">
+            限制與壓力
+        </p>
+
+        <!-- 圖示顯示區域 -->
+        <div class="h-40 flex items-center justify-center mb-8 relative">
+            <!-- Survival Icon (Ghost) -->
+            <div id="iconSurvival" class="absolute transform transition-transform duration-100">
+                <i class="fa-solid fa-ghost text-7xl md:text-8xl text-gray-300 drop-shadow-lg"></i>
+                <!-- 額外的氛圍裝飾：枷鎖/石頭 -->
+                <div class="mt-4 flex justify-center space-x-2 opacity-50">
+                    <i class="fa-solid fa-link text-xl"></i>
+                    <i class="fa-solid fa-weight-hanging text-xl"></i>
+                </div>
+            </div>
+
+            <!-- Creative Icon (Plane/Feather) -->
+            <div id="iconCreative" class="absolute transform transition-transform duration-100 opacity-0 scale-50">
+                <i class="fa-solid fa-paper-plane text-7xl md:text-8xl text-white drop-shadow-lg"></i>
+                 <!-- 額外的氛圍裝飾：星星/雲朵 -->
+                 <div class="mt-4 flex justify-center space-x-4 opacity-80 text-yellow-200">
+                    <i class="fa-solid fa-star text-xl animate-pulse"></i>
+                    <i class="fa-solid fa-cloud text-xl text-white"></i>
+                </div>
             </div>
         </div>
 
-        <h1 class="text-2xl font-bold text-gray-800 mb-4">恭喜您！</h1>
-        <p class="text-gray-600 mb-8 leading-relaxed">
-            如果您在瀏覽器中看到這個畫面，代表您已經成功下載並開啟了這個 HTML 檔案。
-        </p>
-
-        <div class="bg-blue-50 rounded-lg p-4 text-left text-sm text-blue-800 mb-6">
-            <p class="font-bold mb-2">檔案資訊：</p>
-            <ul class="list-disc list-inside space-y-1">
-                <li>檔案類型：HTML5</li>
-                <li>樣式框架：Tailwind CSS</li>
-                <li>狀態：運作正常</li>
-            </ul>
+        <!-- 滑桿控制項 -->
+        <div class="relative w-full mb-4 group">
+            <div class="flex justify-between text-xs text-white opacity-70 mb-2 font-mono uppercase tracking-widest">
+                <span>Survival</span>
+                <span>Creative</span>
+            </div>
+            <input type="range" id="modeSlider" min="0" max="100" value="0" class="w-full">
         </div>
-
-        <button onclick="document.body.style.backgroundColor = document.body.style.backgroundColor === 'rgb(50, 50, 50)' ? '' : '#333'; alert('JavaScript 互動測試成功！');" 
-                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition duration-300 transform hover:scale-105 active:scale-95 shadow-md">
-            點擊測試互動功能
-        </button>
+        
+        <p class="text-white text-xs opacity-50 mt-4">拖曳滑桿以改變現實</p>
     </div>
 
+    <!-- 背景粒子效果 (簡單模擬) -->
+    <div id="particles" class="absolute inset-0 pointer-events-none opacity-30 z-0"></div>
+
+    <script>
+        // DOM 元素
+        const slider = document.getElementById('modeSlider');
+        const body = document.getElementById('appBody');
+        const mainTitle = document.getElementById('mainTitle');
+        const subTitle = document.getElementById('subTitle');
+        const iconSurvival = document.getElementById('iconSurvival');
+        const iconCreative = document.getElementById('iconCreative');
+
+        // 顏色定義 (RGB)
+        // Survival Mode: 深灰/黑
+        const colorStart = { r: 30, g: 30, b: 35 }; 
+        // Creative Mode: 亮麗的天藍色/青色
+        const colorEnd = { r: 14, g: 165, b: 233 }; // Tailwind sky-500
+
+        // 顏色插值函數
+        function interpolateColor(color1, color2, factor) {
+            const result = {
+                r: Math.round(color1.r + factor * (color2.r - color1.r)),
+                g: Math.round(color1.g + factor * (color2.g - color1.g)),
+                b: Math.round(color1.b + factor * (color2.b - color1.b))
+            };
+            return `rgb(${result.r}, ${result.g}, ${result.b})`;
+        }
+
+        // 更新介面狀態的主函數
+        function updateInterface(value) {
+            const percentage = value / 100;
+            
+            // 1. 背景顏色過渡
+            const newColor = interpolateColor(colorStart, colorEnd, percentage);
+            body.style.backgroundColor = newColor;
+
+            // 2. 文字內容切換與樣式
+            if (value < 50) {
+                // Survival 狀態
+                if (mainTitle.innerText !== "SURVIVAL") {
+                    mainTitle.innerText = "SURVIVAL";
+                    subTitle.innerText = "限制與壓力";
+                    mainTitle.style.textShadow = "0 0 10px rgba(0,0,0,0.5)";
+                }
+            } else {
+                // Creative 狀態
+                if (mainTitle.innerText !== "CREATIVE") {
+                    mainTitle.innerText = "CREATIVE";
+                    subTitle.innerText = "無限想像";
+                    mainTitle.style.textShadow = "0 0 20px rgba(255,255,255,0.8)";
+                }
+            }
+
+            // 3. 圖示過渡邏輯 (交叉淡入淡出 + 縮放)
+            // Survival Icon: 0% 時不透明度 1，100% 時不透明度 0
+            const survivalOpacity = 1 - percentage; 
+            const survivalScale = 1 - (percentage * 0.5); // 稍微縮小
+            const survivalTranslate = percentage * -50; // 向左移動
+
+            // Creative Icon: 0% 時不透明度 0，100% 時不透明度 1
+            const creativeOpacity = percentage;
+            const creativeScale = 0.5 + (percentage * 0.5); // 從小變大
+            const creativeTranslate = (1 - percentage) * 50; // 從右移入
+
+            // 應用樣式到 Survival Icon
+            iconSurvival.style.opacity = survivalOpacity;
+            iconSurvival.style.transform = `translateX(${survivalTranslate}px) scale(${survivalScale})`;
+            // 只有在完全看不見時隱藏，避免點擊干擾 (這裡主要靠 opacity)
+            iconSurvival.style.pointerEvents = survivalOpacity < 0.1 ? 'none' : 'auto';
+
+            // 應用樣式到 Creative Icon
+            iconCreative.style.opacity = creativeOpacity;
+            iconCreative.style.transform = `translateX(${creativeTranslate}px) scale(${creativeScale})`;
+            
+            // 4. 動態調整字體顏色深淺 (微調)
+            // 當背景很亮時 (Creative)，文字保持白色並加強陰影，或變深一點點
+            // 這裡保持白色，但在 CSS 中利用 drop-shadow 確保可讀性
+        }
+
+        // 監聽滑桿輸入事件
+        slider.addEventListener('input', (e) => {
+            updateInterface(e.target.value);
+        });
+
+        // 初始化
+        updateInterface(0);
+
+    </script>
 </body>
 </html>
