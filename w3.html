@@ -1,194 +1,343 @@
-import React, { useState, useEffect } from 'react';
-import { Clock, Sun, Moon, Coffee, AlertCircle, Heart, DollarSign, Zap, ChevronRight } from 'lucide-react';
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的觀察筆記 - 互動時間軸</title>
+    
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 引入 Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 
-const ObservationTimeline = () => {
-  // 初始狀態設為第一個時間點
-  const [activeId, setActiveId] = useState(1);
-  const [animate, setAnimate] = useState(false);
-
-  // 資料數據：林煜博的觀察筆記
-  const timelineData = [
-    {
-      id: 1,
-      period: "早晨",
-      time: "08:25 AM",
-      icon: <Clock className="w-6 h-6" />,
-      title: "趕時間的焦慮",
-      moodType: "anxious", // 用於決定背景色系 (冷色)
-      moodColor: "bg-slate-800",
-      textColor: "text-slate-100",
-      accentColor: "text-cyan-400",
-      heartRate: "110 bpm",
-      observation: "觀察對象在捷運站內進行無氧衝刺。左手緊握手機，右手提著早餐，神情慌張。對捷運關門警示音表現出極度敏感反應。",
-      conclusion: "對遲到的恐懼引發了腎上腺素激增，典型的通勤焦慮症狀。"
-    },
-    {
-      id: 2,
-      period: "中午",
-      time: "12:30 PM",
-      icon: <Coffee className="w-6 h-6" />,
-      title: "午休的放空",
-      moodType: "calm", // 中性/放鬆
-      moodColor: "bg-emerald-900",
-      textColor: "text-emerald-50",
-      accentColor: "text-emerald-300",
-      heartRate: "75 bpm",
-      observation: "攝取碳水化合物後，觀察對象眼神逐漸失焦，呈現一種名為「飯氣攻心」的生理狀態。暫時切斷了與工作的連結。",
-      conclusion: "短暫的腦波平緩期，為下午的戰鬥積蓄能量。"
-    },
-    {
-      id: 3,
-      period: "下午",
-      time: "15:45 PM",
-      icon: <DollarSign className="w-6 h-6" />,
-      title: "入帳的狂喜",
-      moodType: "happy", // 暖色/開心
-      moodColor: "bg-orange-500",
-      textColor: "text-white",
-      accentColor: "text-yellow-200",
-      heartRate: "95 bpm (興奮)",
-      observation: "手機發出「薪資入帳」通知音效。觀察對象嘴角上揚角度超過 45 度，在此刻開啟了購物網站視窗。",
-      conclusion: "金錢刺激帶來的多巴胺分泌顯著，工作痛苦指數瞬間歸零。"
-    },
-    {
-      id: 4,
-      period: "晚上",
-      time: "20:00 PM",
-      icon: <Moon className="w-6 h-6" />,
-      title: "下班的微醺",
-      moodType: "chill", // 暖/暗色
-      moodColor: "bg-indigo-950",
-      textColor: "text-indigo-100",
-      accentColor: "text-pink-400",
-      heartRate: "68 bpm",
-      observation: "卸下社會化面具，呈現液態化癱軟在沙發上。手中握有酒精或高熱量食物，正在觀看無腦影片。",
-      conclusion: "回歸生物本能的休息狀態，修復白天的社交損耗。"
-    }
-  ];
-
-  // 取得當前選中的資料
-  const currentData = timelineData.find(item => item.id === activeId);
-
-  // 切換時觸發動畫效果
-  useEffect(() => {
-    setAnimate(true);
-    const timer = setTimeout(() => setAnimate(false), 500);
-    return () => clearTimeout(timer);
-  }, [activeId]);
-
-  return (
-    <div className={`min-h-screen w-full transition-colors duration-1000 ease-in-out flex flex-col items-center justify-center p-4 ${currentData.moodColor} ${currentData.textColor}`}>
-      
-      {/* 標題區 */}
-      <header className="mb-10 text-center animate-fade-in">
-        <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-4">
-          <Zap className="w-4 h-4" />
-          <span className="text-sm font-light tracking-widest">HUMAN OBSERVATION LOG</span>
-        </div>
-        <h1 className="text-4xl md:text-5xl font-bold tracking-wider mb-2">林煜博觀察筆記</h1>
-        <p className="opacity-80 text-lg">對象編號：USER-001 情緒波動紀錄</p>
-      </header>
-
-      <div className="flex flex-col md:flex-row gap-12 max-w-6xl w-full items-center justify-center">
+    <!-- 自定義樣式與動畫 -->
+    <style>
+        /* 平滑過渡效果 */
+        .smooth-transition {
+            transition-property: all;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 500ms;
+        }
         
-        {/* 左側：互動時間軸 */}
-        <div className="relative flex flex-row md:flex-col justify-between md:h-[400px] w-full md:w-auto px-4 md:px-0 gap-4 md:gap-0">
-          {/* 連接線 (背景) */}
-          <div className="absolute left-0 right-0 top-1/2 h-1 md:h-full md:w-1 md:left-1/2 md:top-0 bg-white/20 -z-0 transform -translate-y-1/2 md:translate-y-0 md:-translate-x-1/2"></div>
-          
-          {timelineData.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveId(item.id)}
-              className={`relative group z-10 flex flex-col md:flex-row items-center gap-4 transition-all duration-300 ${activeId === item.id ? 'scale-110' : 'hover:scale-105 opacity-70 hover:opacity-100'}`}
-            >
-              {/* 時間標籤 (桌機版顯示在左側，手機版隱藏) */}
-              <span className={`hidden md:block w-24 text-right font-mono text-sm transition-all duration-300 ${activeId === item.id ? 'font-bold opacity-100' : 'opacity-60'}`}>
-                {item.time}
-              </span>
+        /* 卡片進場動畫 */
+        @keyframes cardEnter {
+            from {
+                opacity: 0;
+                transform: translateY(2rem) rotateX(10deg);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) rotateX(0);
+            }
+        }
+        
+        .animate-card-enter {
+            animation: cardEnter 0.6s ease-out forwards;
+        }
 
-              {/* 節點圓圈 */}
-              <div className={`
-                w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center shadow-lg border-4 transition-all duration-500
-                ${activeId === item.id 
-                  ? 'bg-white text-gray-900 border-white rotate-0' 
-                  : 'bg-black/30 border-white/30 text-white rotate-12'}
-              `}>
-                {item.icon}
-              </div>
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+    </style>
+</head>
+<body id="app-body" class="min-h-screen w-full transition-colors duration-1000 ease-in-out flex flex-col items-center justify-center p-4 text-slate-100 bg-slate-800">
 
-              {/* 手機版時間標籤 */}
-              <span className="md:hidden text-xs font-mono mt-2">{item.period}</span>
-              
-              {/* 文字標籤 (桌機版顯示在右側，手機版隱藏) */}
-              <span className={`hidden md:block w-24 text-left font-bold text-lg transition-all duration-300 ${activeId === item.id ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'}`}>
-                {item.period}
-              </span>
-            </button>
-          ))}
+    <!-- 標題區 -->
+    <header class="mb-10 text-center animate-fade-in relative z-20">
+        <div class="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-4">
+            <i data-lucide="zap" class="w-4 h-4"></i>
+            <span class="text-sm font-light tracking-widest">HUMAN OBSERVATION LOG</span>
+        </div>
+        <h1 class="text-4xl md:text-5xl font-bold tracking-wider mb-2">我的觀察筆記</h1>
+        <p class="opacity-80 text-lg">對象編號：USER-001 情緒波動紀錄</p>
+    </header>
+
+    <div class="flex flex-col md:flex-row gap-12 max-w-6xl w-full items-center justify-center relative z-20">
+        
+        <!-- 左側：互動時間軸 -->
+        <div class="relative flex flex-row md:flex-col justify-between md:h-[400px] w-full md:w-auto px-4 md:px-0 gap-4 md:gap-0" id="timeline-container">
+            <!-- 連接線 (背景) -->
+            <div class="absolute left-0 right-0 top-1/2 h-1 md:h-full md:w-1 md:left-1/2 md:top-0 bg-white/20 -z-0 transform -translate-y-1/2 md:translate-y-0 md:-translate-x-1/2"></div>
+            
+            <!-- 時間軸節點將由 JavaScript 動態生成 -->
         </div>
 
-        {/* 右側：觀察卡片顯示區 */}
-        <div className="w-full md:w-[500px] perspective-1000">
-          <div 
-            className={`
-              relative bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-8 shadow-2xl
-              transform transition-all duration-700 ease-out
-              ${animate ? 'opacity-0 translate-y-8 rotate-x-12' : 'opacity-100 translate-y-0 rotate-x-0'}
-            `}
-          >
-            {/* 卡片標頭 */}
-            <div className="flex justify-between items-start mb-6 border-b border-white/10 pb-4">
-              <div>
-                <h2 className="text-3xl font-bold mb-1 flex items-center gap-2">
-                  {currentData.title}
-                </h2>
-                <span className={`text-sm font-mono px-2 py-0.5 rounded ${currentData.moodType === 'anxious' ? 'bg-red-500/20 text-red-200' : 'bg-green-500/20 text-green-200'}`}>
-                  MOOD: {currentData.moodType.toUpperCase()}
-                </span>
-              </div>
-              <div className="text-right">
-                <div className={`text-2xl font-black font-mono ${currentData.accentColor}`}>
-                  {currentData.heartRate}
+        <!-- 右側：觀察卡片顯示區 -->
+        <div class="w-full md:w-[500px] perspective-1000">
+            <div id="observation-card" class="relative bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-8 shadow-2xl transform transition-all duration-700 ease-out origin-bottom">
+                
+                <!-- 卡片內容 -->
+                <div id="card-content">
+                    <!-- 卡片標頭 -->
+                    <div class="flex justify-between items-start mb-6 border-b border-white/10 pb-4">
+                        <div>
+                            <h2 id="card-title" class="text-3xl font-bold mb-1 flex items-center gap-2">
+                                <!-- Title will be injected here -->
+                            </h2>
+                            <span id="card-mood-badge" class="text-sm font-mono px-2 py-0.5 rounded transition-colors duration-300">
+                                <!-- Mood badge will be injected here -->
+                            </span>
+                        </div>
+                        <div class="text-right">
+                            <div id="card-heart-rate" class="text-2xl font-black font-mono transition-colors duration-300">
+                                <!-- Heart rate will be injected here -->
+                            </div>
+                            <div class="text-xs opacity-60">HEART RATE</div>
+                        </div>
+                    </div>
+
+                    <!-- 觀察內容 -->
+                    <div class="space-y-6">
+                        <div class="space-y-2">
+                            <h3 class="text-sm font-bold opacity-50 uppercase tracking-wider flex items-center gap-2">
+                                <i data-lucide="alert-circle" class="w-4 h-4"></i> 現場觀察紀錄
+                            </h3>
+                            <p id="card-observation" class="text-lg leading-relaxed font-serif italic">
+                                <!-- Observation text -->
+                            </p>
+                        </div>
+
+                        <div class="bg-black/20 p-4 rounded-lg border-l-4 border-current">
+                            <h3 class="text-xs font-bold opacity-70 uppercase tracking-wider mb-1 flex items-center gap-2">
+                                <i data-lucide="chevron-right" class="w-3 h-3"></i> 我的結論
+                            </h3>
+                            <p id="card-conclusion" class="font-medium">
+                                <!-- Conclusion text -->
+                            </p>
+                        </div>
+                    </div>
                 </div>
-                <div className="text-xs opacity-60">HEART RATE</div>
-              </div>
+
+                <!-- 裝飾性背景光暈 -->
+                <div id="bg-glow-1" class="absolute -top-10 -right-10 w-32 h-32 rounded-full blur-3xl opacity-30 transition-colors duration-1000"></div>
+                <div id="bg-glow-2" class="absolute -bottom-10 -left-10 w-40 h-40 rounded-full blur-3xl opacity-20 transition-colors duration-1000"></div>
             </div>
-
-            {/* 觀察內容 */}
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <h3 className="text-sm font-bold opacity-50 uppercase tracking-wider flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4" /> 現場觀察紀錄
-                </h3>
-                <p className="text-lg leading-relaxed font-serif italic">
-                  "{currentData.observation}"
-                </p>
-              </div>
-
-              <div className="bg-black/20 p-4 rounded-lg border-l-4 border-current">
-                <h3 className="text-xs font-bold opacity-70 uppercase tracking-wider mb-1 flex items-center gap-2">
-                  <ChevronRight className="w-3 h-3" /> 林煜博的結論
-                </h3>
-                <p className="font-medium">
-                  {currentData.conclusion}
-                </p>
-              </div>
-            </div>
-
-            {/* 裝飾性背景元素 */}
-            <div className={`absolute -top-10 -right-10 w-32 h-32 rounded-full blur-3xl opacity-30 ${currentData.moodType === 'anxious' ? 'bg-cyan-500' : 'bg-yellow-500'}`}></div>
-            <div className={`absolute -bottom-10 -left-10 w-40 h-40 rounded-full blur-3xl opacity-20 ${currentData.moodType === 'anxious' ? 'bg-blue-600' : 'bg-red-500'}`}></div>
-          </div>
         </div>
-      </div>
-
-      {/* 底部提示 */}
-      <div className="fixed bottom-4 text-xs opacity-40 font-mono">
-        CLICK TIMELINE NODES TO SYNC DATA
-      </div>
     </div>
-  );
-};
 
-export default ObservationTimeline;
+    <!-- 底部提示 -->
+    <div class="fixed bottom-4 text-xs opacity-40 font-mono text-white mix-blend-overlay">
+        CLICK TIMELINE NODES TO SYNC DATA
+    </div>
+
+    <script>
+        // 資料數據
+        const timelineData = [
+            {
+                id: 1,
+                period: "早晨",
+                time: "08:25 AM",
+                icon: "clock",
+                title: "趕時間的焦慮",
+                moodType: "anxious",
+                moodColor: "bg-slate-800",
+                textColor: "text-slate-100",
+                accentColor: "text-cyan-400",
+                badgeColor: "bg-red-500/20 text-red-200",
+                glow1: "bg-cyan-500",
+                glow2: "bg-blue-600",
+                heartRate: "110 bpm",
+                observation: "觀察對象在捷運站內進行無氧衝刺。左手緊握手機，右手提著早餐，神情慌張。對捷運關門警示音表現出極度敏感反應。",
+                conclusion: "對遲到的恐懼引發了腎上腺素激增，典型的通勤焦慮症狀。"
+            },
+            {
+                id: 2,
+                period: "中午",
+                time: "12:30 PM",
+                icon: "coffee",
+                title: "午休的放空",
+                moodType: "calm",
+                moodColor: "bg-emerald-900",
+                textColor: "text-emerald-50",
+                accentColor: "text-emerald-300",
+                badgeColor: "bg-green-500/20 text-green-200",
+                glow1: "bg-emerald-400",
+                glow2: "bg-teal-600",
+                heartRate: "75 bpm",
+                observation: "攝取碳水化合物後，觀察對象眼神逐漸失焦，呈現一種名為「飯氣攻心」的生理狀態。暫時切斷了與工作的連結。",
+                conclusion: "短暫的腦波平緩期，為下午的戰鬥積蓄能量。"
+            },
+            {
+                id: 3,
+                period: "下午",
+                time: "15:45 PM",
+                icon: "dollar-sign",
+                title: "入帳的狂喜",
+                moodType: "happy",
+                moodColor: "bg-orange-500",
+                textColor: "text-white",
+                accentColor: "text-yellow-200",
+                badgeColor: "bg-yellow-500/20 text-yellow-100",
+                glow1: "bg-yellow-400",
+                glow2: "bg-red-500",
+                heartRate: "95 bpm (興奮)",
+                observation: "手機發出「薪資入帳」通知音效。觀察對象嘴角上揚角度超過 45 度，在此刻開啟了購物網站視窗。",
+                conclusion: "金錢刺激帶來的多巴胺分泌顯著，工作痛苦指數瞬間歸零。"
+            },
+            {
+                id: 4,
+                period: "晚上",
+                time: "20:00 PM",
+                icon: "moon",
+                title: "下班的微醺",
+                moodType: "chill",
+                moodColor: "bg-indigo-950",
+                textColor: "text-indigo-100",
+                accentColor: "text-pink-400",
+                badgeColor: "bg-purple-500/20 text-purple-200",
+                glow1: "bg-purple-500",
+                glow2: "bg-pink-600",
+                heartRate: "68 bpm",
+                observation: "卸下社會化面具，呈現液態化癱軟在沙發上。手中握有酒精或高熱量食物，正在觀看無腦影片。",
+                conclusion: "回歸生物本能的休息狀態，修復白天的社交損耗。"
+            }
+        ];
+
+        let activeId = 1;
+        const appBody = document.getElementById('app-body');
+        const timelineContainer = document.getElementById('timeline-container');
+        const cardTitle = document.getElementById('card-title');
+        const cardMoodBadge = document.getElementById('card-mood-badge');
+        const cardHeartRate = document.getElementById('card-heart-rate');
+        const cardObservation = document.getElementById('card-observation');
+        const cardConclusion = document.getElementById('card-conclusion');
+        const observationCard = document.getElementById('observation-card');
+        const bgGlow1 = document.getElementById('bg-glow-1');
+        const bgGlow2 = document.getElementById('bg-glow-2');
+
+        // 初始化
+        function init() {
+            renderTimeline();
+            updateView(activeId, true);
+        }
+
+        // 渲染時間軸按鈕
+        function renderTimeline() {
+            timelineContainer.innerHTML = ''; // 清空
+            
+            // 加入背景線 (重新加入因為 innerHTML 清空了)
+            const line = document.createElement('div');
+            line.className = "absolute left-0 right-0 top-1/2 h-1 md:h-full md:w-1 md:left-1/2 md:top-0 bg-white/20 -z-0 transform -translate-y-1/2 md:translate-y-0 md:-translate-x-1/2";
+            timelineContainer.appendChild(line);
+
+            timelineData.forEach(item => {
+                const btn = document.createElement('button');
+                btn.className = `relative group z-10 flex flex-col md:flex-row items-center gap-4 transition-all duration-300 cursor-pointer outline-none select-none`;
+                
+                // 動態生成按鈕內容
+                btn.innerHTML = `
+                    <span class="timeline-time hidden md:block w-24 text-right font-mono text-sm transition-all duration-300 opacity-60">
+                        ${item.time}
+                    </span>
+                    <div class="timeline-node w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center shadow-lg border-4 transition-all duration-500 bg-black/30 border-white/30 text-white rotate-12">
+                        <i data-lucide="${item.icon}" class="w-6 h-6"></i>
+                    </div>
+                    <span class="md:hidden text-xs font-mono mt-2">${item.period}</span>
+                    <span class="timeline-period hidden md:block w-24 text-left font-bold text-lg transition-all duration-300 opacity-0 -translate-x-4">
+                        ${item.period}
+                    </span>
+                `;
+
+                btn.onclick = () => handleNodeClick(item.id);
+                btn.id = `node-${item.id}`;
+                timelineContainer.appendChild(btn);
+            });
+            
+            // 重新渲染圖示
+            lucide.createIcons();
+        }
+
+        // 處理點擊事件
+        function handleNodeClick(id) {
+            if (activeId === id) return;
+            activeId = id;
+            updateView(id);
+        }
+
+        // 更新畫面視圖
+        function updateView(id, isFirstLoad = false) {
+            const data = timelineData.find(item => item.id === id);
+            if (!data) return;
+
+            // 1. 更新背景顏色與文字顏色
+            // 移除所有可能的背景色和文字色 class，然後加上新的
+            timelineData.forEach(d => {
+                appBody.classList.remove(d.moodColor);
+                appBody.classList.remove(d.textColor);
+            });
+            appBody.classList.add(data.moodColor);
+            appBody.classList.add(data.textColor);
+
+            // 2. 更新時間軸節點樣式
+            timelineData.forEach(item => {
+                const btn = document.getElementById(`node-${item.id}`);
+                const timeSpan = btn.querySelector('.timeline-time');
+                const nodeDiv = btn.querySelector('.timeline-node');
+                const periodSpan = btn.querySelector('.timeline-period');
+
+                if (item.id === id) {
+                    // Active State
+                    btn.classList.add('scale-110');
+                    btn.classList.remove('opacity-70', 'hover:scale-105');
+                    
+                    timeSpan.classList.add('font-bold', 'opacity-100');
+                    timeSpan.classList.remove('opacity-60');
+
+                    nodeDiv.className = "timeline-node w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center shadow-lg border-4 transition-all duration-500 bg-white text-gray-900 border-white rotate-0";
+                    
+                    periodSpan.classList.add('opacity-100', 'translate-x-0');
+                    periodSpan.classList.remove('opacity-0', '-translate-x-4');
+                } else {
+                    // Inactive State
+                    btn.classList.remove('scale-110');
+                    btn.classList.add('opacity-70', 'hover:scale-105');
+
+                    timeSpan.classList.remove('font-bold', 'opacity-100');
+                    timeSpan.classList.add('opacity-60');
+
+                    nodeDiv.className = "timeline-node w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center shadow-lg border-4 transition-all duration-500 bg-black/30 border-white/30 text-white rotate-12";
+                    
+                    periodSpan.classList.remove('opacity-100', 'translate-x-0');
+                    periodSpan.classList.add('opacity-0', '-translate-x-4');
+                }
+            });
+
+            // 3. 更新卡片內容 (帶動畫)
+            if (!isFirstLoad) {
+                // 退場動畫
+                observationCard.classList.add('opacity-0', 'translate-y-8', 'rotate-x-12');
+                
+                setTimeout(() => {
+                    updateCardContent(data);
+                    // 進場動畫
+                    observationCard.classList.remove('opacity-0', 'translate-y-8', 'rotate-x-12');
+                }, 300);
+            } else {
+                updateCardContent(data);
+            }
+        }
+
+        // 更新卡片內部文字與樣式
+        function updateCardContent(data) {
+            cardTitle.innerText = data.title;
+            cardMoodBadge.innerText = `MOOD: ${data.moodType.toUpperCase()}`;
+            cardMoodBadge.className = `text-sm font-mono px-2 py-0.5 rounded ${data.badgeColor}`;
+            
+            cardHeartRate.innerText = data.heartRate;
+            cardHeartRate.className = `text-2xl font-black font-mono ${data.accentColor}`;
+            
+            cardObservation.innerText = `"${data.observation}"`;
+            cardConclusion.innerText = data.conclusion;
+
+            // 更新光暈顏色
+            bgGlow1.className = `absolute -top-10 -right-10 w-32 h-32 rounded-full blur-3xl opacity-30 transition-colors duration-1000 ${data.glow1}`;
+            bgGlow2.className = `absolute -bottom-10 -left-10 w-40 h-40 rounded-full blur-3xl opacity-20 transition-colors duration-1000 ${data.glow2}`;
+        }
+
+        // 啟動應用
+        init();
+
+    </script>
+</body>
+</html>
