@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人性駭客實驗</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Roboto Mono', monospace;
+            background-color: #050505;
+            color: #e0e0e0;
+            overflow: hidden; /* Prevent scrolling on mobile spamming */
+            touch-action: manipulation; /* Improves touch response */
+        }
+
+        /* 掃描線效果 */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* 霓虹光暈動畫 */
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 10px currentColor, 0 0 20px currentColor; }
+            50% { box-shadow: 0 0 20px currentColor, 0 0 40px currentColor; }
+            100% { box-shadow: 0 0 10px currentColor, 0 0 20px currentColor; }
+        }
+
+        /* 按鈕震動 */
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+
+        .shake-active {
+            animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        /* 浮動文字動畫 */
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-100px) scale(1.5); opacity: 0; }
+        }
+
+        .floating-text {
+            position: absolute;
+            pointer-events: none;
+            animation: floatUp 1s ease-out forwards;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(255,255,255,0.5);
+        }
+
+        .hacker-btn {
+            transition: all 0.1s;
+        }
+        
+        .hacker-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* 故障文字效果 */
+        .glitch-text {
+            position: relative;
+        }
+        
+        .crt-flicker {
+            animation: textShadow 1.6s infinite;
+        }
+
+        @keyframes textShadow {
+            0% { text-shadow: 0.4389924193300864px 0 1px rgba(0,30,255,0.5), -0.4389924193300864px 0 1px rgba(255,0,80,0.3), 0 0 3px; }
+            5% { text-shadow: 2.7928974010788217px 0 1px rgba(0,30,255,0.5), -2.7928974010788217px 0 1px rgba(255,0,80,0.3), 0 0 3px; }
+            /* ... simplified glitch keyframes ... */
+            100% { text-shadow: 0.4389924193300864px 0 1px rgba(0,30,255,0.5), -0.4389924193300864px 0 1px rgba(255,0,80,0.3), 0 0 3px; }
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col items-center justify-center select-none relative">
+
+    <div class="scanlines"></div>
+
+    <!-- 頂部標題 -->
+    <div class="absolute top-10 text-center z-20">
+        <h1 class="text-xl md:text-2xl font-bold tracking-widest text-green-500 uppercase crt-flicker">HUMAN_HACKING.exe</h1>
+        <p class="text-xs text-gray-500 mt-2 tracking-widest">SUBJECT: #<span id="userId">8492</span></p>
+    </div>
+
+    <!-- 主互動區域 -->
+    <div class="relative z-20 flex flex-col items-center">
+        
+        <!-- 計數器 -->
+        <div class="mb-8 font-bold text-6xl md:text-8xl tabular-nums text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] transition-colors duration-200" id="counter">
+            0
+        </div>
+
+        <!-- 實驗按鈕 -->
+        <button id="dopamineBtn" class="hacker-btn relative w-64 h-64 rounded-full border-4 border-white/20 bg-gray-900 flex items-center justify-center group focus:outline-none touch-manipulation">
+            <div id="btnInner" class="w-56 h-56 rounded-full bg-red-600 flex items-center justify-center shadow-[0_0_30px_rgba(220,38,38,0.6)] transition-all duration-200">
+                <span id="btnText" class="text-2xl font-bold text-white tracking-wider pointer-events-none">PUSH</span>
+            </div>
+            <!-- 裝飾環 -->
+            <div class="absolute inset-0 rounded-full border border-white/10 scale-110 pointer-events-none"></div>
+            <div class="absolute inset-0 rounded-full border border-dashed border-white/20 scale-125 animate-[spin_10s_linear_infinite] pointer-events-none"></div>
+        </button>
+
+        <!-- 心理操縱訊息 -->
+        <div class="h-16 mt-12 flex items-center justify-center w-full px-4">
+            <p id="messageDisplay" class="text-center text-lg md:text-xl text-yellow-400 font-bold min-h-[1.5em] transition-opacity duration-300"></p>
+        </div>
+        
+    </div>
+
+    <!-- 底部數據流裝飾 -->
+    <div class="absolute bottom-4 left-4 right-4 flex justify-between text-[10px] text-gray-600 z-10 font-mono">
+        <span>STATUS: COLLECTING_DATA</span>
+        <span>LATENCY: 14ms</span>
+        <span>SESSION: ACTIVE</span>
+    </div>
+
+    <script>
+        // 狀態變數
+        let count = 0;
+        let audioContext = null;
+        const colors = [
+            '#ef4444', // Red
+            '#3b82f6', // Blue
+            '#22c55e', // Green
+            '#a855f7', // Purple
+            '#f59e0b', // Amber
+            '#ec4899', // Pink
+            '#06b6d4'  // Cyan
+        ];
+
+        // 心理操縱語句庫 (按階段分類)
+        const messages = {
+            early: [
+                "做得好", "再來一次", "不錯喔", "感覺到了嗎？", "繼續", "多巴胺釋放中"
+            ],
+            mid: [
+                "你很擅長這個", "不要停", "獎勵即將到來", "我們會獎勵你的", "點擊就是快樂", "大腦喜歡這個", "聽話"
+            ],
+            late: [
+                "你停不下來了", "這就是行為制約", "你是完美的實驗品", "我們控制了你的手指", "為什麼還要點？", "虛擬的成就感", "服從指令"
+            ],
+            rare: [
+                "JACKPOT!", "系統超載", "多巴胺過量", "CRITICAL HIT"
+            ]
+        };
+
+        // DOM 元素
+        const btn = document.getElementById('dopamineBtn');
+        const btnInner = document.getElementById('btnInner');
+        const btnText = document.getElementById('btnText');
+        const counterDisplay = document.getElementById('counter');
+        const messageDisplay = document.getElementById('messageDisplay');
+        const userIdSpan = document.getElementById('userId');
+
+        // 初始化隨機 ID
+        userIdSpan.textContent = Math.floor(Math.random() * 9000) + 1000;
+
+        // 音效引擎 (Web Audio API)
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+        }
+
+        function playSlotSound(type = 'normal') {
+            if (!audioContext) return;
+
+            const osc = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            osc.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            const now = audioContext.currentTime;
+
+            if (type === 'rare') {
+                // 稀有獎勵音效：快速爬升的琶音
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.exponentialRampToValueAtTime(880, now + 0.1);
+                osc.frequency.exponentialRampToValueAtTime(1760, now + 0.2);
+                
+                gainNode.gain.setValueAtTime(0.3, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+                
+                osc.start(now);
+                osc.stop(now + 0.6);
+            } else {
+                // 普通音效：隨機高音，類似吃金幣
+                osc.type = 'sine';
+                // 隨機頻率讓它聽起來不那麼單調，更有「賭博」感
+                const freq = 600 + Math.random() * 400; 
+                osc.frequency.setValueAtTime(freq, now);
+                osc.frequency.exponentialRampToValueAtTime(freq * 1.5, now + 0.1);
+
+                gainNode.gain.setValueAtTime(0.2, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+
+                osc.start(now);
+                osc.stop(now + 0.3);
+            }
+        }
+
+        // 視覺效果函數
+        function triggerVisuals(isRare) {
+            // 1. 隨機改變顏色
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            btnInner.style.backgroundColor = randomColor;
+            btnInner.style.boxShadow = `0 0 30px ${randomColor}aa`;
+            counterDisplay.style.color = randomColor;
+
+            // 2. 隨機大小變化 (保持在可點擊範圍內，但視覺上變大變小)
+            const scale = 0.9 + Math.random() * 0.3; // 0.9 ~ 1.2
+            btnInner.style.transform = `scale(${scale})`;
+
+            // 3. 震動效果
+            btn.classList.remove('shake-active');
+            void btn.offsetWidth; // Trigger reflow
+            btn.classList.add('shake-active');
+
+            // 4. 浮動文字
+            createFloatingText(randomColor, isRare);
+        }
+
+        function createFloatingText(color, isRare) {
+            const el = document.createElement('div');
+            el.className = 'floating-text';
+            
+            const texts = isRare ? ["+999", "JACKPOT", "DOPAMINE!!"] : ["+1", "YES", "GOOD", "+10xp", "Like", "Reward"];
+            el.textContent = texts[Math.floor(Math.random() * texts.length)];
+            
+            el.style.color = color;
+            el.style.fontSize = isRare ? '2rem' : '1.2rem';
+            
+            // 隨機位置偏移
+            const rect = btn.getBoundingClientRect();
+            const randomX = (Math.random() - 0.5) * 100;
+            const startX = rect.left + rect.width / 2 + randomX;
+            const startY = rect.top;
+
+            el.style.left = `${startX}px`;
+            el.style.top = `${startY}px`;
+
+            document.body.appendChild(el);
+
+            // 清理
+            setTimeout(() => el.remove(), 1000);
+        }
+
+        // 訊息邏輯
+        function updateMessage(currentCount, isRare) {
+            if (isRare) {
+                messageDisplay.textContent = messages.rare[Math.floor(Math.random() * messages.rare.length)];
+                messageDisplay.className = "text-center text-2xl font-bold text-white crt-flicker";
+                return;
+            }
+
+            // 讓訊息不是每次都出現，製造「間歇性增強」 (Intermittent Reinforcement)
+            if (Math.random() > 0.4) return; 
+
+            let pool = messages.early;
+            if (currentCount > 20) pool = messages.mid;
+            if (currentCount > 50) pool = messages.late;
+
+            const text = pool[Math.floor(Math.random() * pool.length)];
+            messageDisplay.textContent = text;
+            
+            // 隨機文字樣式
+            const styles = ["text-yellow-400", "text-green-400", "text-red-500", "text-blue-400"];
+            const randomStyle = styles[Math.floor(Math.random() * styles.length)];
+            messageDisplay.className = `text-center text-lg md:text-xl font-bold transition-opacity duration-300 ${randomStyle}`;
+        }
+
+        // 主互動
+        btn.addEventListener('pointerdown', (e) => {
+            initAudio(); // 確保音效上下文啟動
+            
+            count++;
+            counterDisplay.textContent = count;
+
+            // 5% 機率觸發「稀有」獎勵
+            const isRare = Math.random() < 0.05;
+
+            playSlotSound(isRare ? 'rare' : 'normal');
+            triggerVisuals(isRare);
+            updateMessage(count, isRare);
+
+            // 按鈕文字隨機變化
+            if (count % 10 === 0) {
+                const btnTexts = ["PUSH", "MORE", "AGAIN", "OBEY", "FEED"];
+                btnText.textContent = btnTexts[Math.floor(Math.random() * btnTexts.length)];
+            }
+        });
+
+        // 鍵盤支援
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'Enter') {
+                e.preventDefault(); // 防止滾動
+                btn.dispatchEvent(new Event('pointerdown'));
+                btn.classList.add('active:scale-95'); // 手動模擬點擊樣式
+                setTimeout(() => btn.classList.remove('active:scale-95'), 100);
+            }
+        });
+
+    </script>
+</body>
+</html>

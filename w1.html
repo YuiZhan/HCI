@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interface & System Lab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #1a202c; /* Gray 900 */
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* 鑰匙樣式 */
+        .key-container {
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            cursor: grab;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+        }
+        .key-container:active {
+            cursor: grabbing;
+            transform: scale(1.1);
+        }
+        .key-container.dragging {
+            z-index: 50;
+            transition: none; /* 拖曳時移除過渡效果以保持跟隨 */
+        }
+
+        /* 鎖與門的動畫 */
+        .door {
+            transform-origin: left center;
+            transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+        
+        .door.open {
+            transform: perspective(1000px) rotateY(-105deg);
+        }
+
+        .door-shadow {
+            transition: opacity 1s;
+        }
+        .door.open + .door-shadow {
+            opacity: 0.1;
+        }
+
+        /* 震動動畫 (錯誤回饋) */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px) rotate(-5deg); }
+            20%, 40%, 60%, 80% { transform: translateX(5px) rotate(5deg); }
+        }
+        .shake-animation {
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+            fill: #ef4444 !important; /* Red 500 */
+        }
+
+        /* 成功轉動動畫 */
+        @keyframes turn-key {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(90deg); }
+        }
+        .turning {
+            animation: turn-key 0.5s forwards;
+        }
+
+        /* 指示文字 */
+        .instruction {
+            pointer-events: none;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        /* 鎖孔光暈 */
+        .lock-glow {
+            transition: all 0.3s;
+        }
+        .valid-hover .lock-glow {
+            filter: drop-shadow(0 0 10px #fbbf24);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col items-center justify-center text-white">
+
+    <!-- 標題區域 -->
+    <div class="absolute top-8 text-center z-0">
+        <h1 class="text-2xl md:text-3xl font-bold tracking-widest text-gray-300 mb-2">互動實驗室</h1>
+        <p class="text-gray-500 text-sm">請拖曳鑰匙 (Interface) 至鎖孔 (System)</p>
+    </div>
+
+    <div class="relative w-full max-w-5xl h-[600px] flex flex-col md:flex-row items-center justify-between p-4 md:p-12 gap-8 z-10">
+        
+        <!-- 左側：鑰匙區 (Interface) -->
+        <div class="w-full md:w-1/3 flex flex-row md:flex-col justify-center items-center gap-8 h-full bg-gray-800/30 rounded-3xl border border-gray-700 p-6 relative">
+            <div class="absolute top-4 left-6 text-xs text-gray-400 font-mono tracking-widest">INTERFACES</div>
+            
+            <!-- Key 1 (Wrong - Round) -->
+            <div class="key-container" id="key-1" data-id="1">
+                <svg width="120" height="60" viewBox="0 0 120 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Handle -->
+                    <circle cx="20" cy="30" r="18" fill="#94a3b8" stroke="#475569" stroke-width="2"/>
+                    <!-- Shaft -->
+                    <rect x="35" y="25" width="80" height="10" fill="#94a3b8"/>
+                    <!-- Teeth (Round Belly) -->
+                    <path d="M85 35 Q97.5 55 110 35 Z" fill="#94a3b8"/>
+                    <text x="14" y="34" font-size="10" fill="#1e293b" font-weight="bold">API A</text>
+                </svg>
+            </div>
+
+            <!-- Key 2 (Correct - Zigzag) -->
+            <div class="key-container" id="key-2" data-id="2">
+                <svg width="120" height="60" viewBox="0 0 120 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Handle -->
+                    <path d="M20 10 L35 30 L20 50 L5 30 Z" fill="#fbbf24" stroke="#b45309" stroke-width="2"/>
+                    <!-- Shaft -->
+                    <rect x="35" y="26" width="80" height="8" fill="#fbbf24"/>
+                    <!-- Teeth (Zigzag/Sharp) - Matches Lock Hole -->
+                    <path d="M80 34 L85 48 L90 34 L95 48 L100 34 L105 48 L110 34 Z" fill="#fbbf24"/>
+                    <text x="12" y="34" font-size="10" fill="#78350f" font-weight="bold">API B</text>
+                </svg>
+            </div>
+
+            <!-- Key 3 (Wrong - Block) -->
+            <div class="key-container" id="key-3" data-id="3">
+                <svg width="120" height="60" viewBox="0 0 120 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Handle -->
+                    <rect x="5" y="15" width="30" height="30" rx="4" fill="#cbd5e1" stroke="#64748b" stroke-width="2"/>
+                    <!-- Shaft -->
+                    <rect x="35" y="25" width="80" height="10" fill="#cbd5e1"/>
+                    <!-- Teeth (Square Block) -->
+                    <path d="M85 35 V50 H110 V35 Z" fill="#cbd5e1"/>
+                    <text x="12" y="34" font-size="10" fill="#334155" font-weight="bold">API C</text>
+                </svg>
+            </div>
+        </div>
+
+        <!-- 中間指示 -->
+        <div class="hidden md:flex flex-col items-center justify-center text-gray-600">
+            <svg class="w-8 h-8 instruction" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+            </svg>
+        </div>
+
+        <!-- 右側：系統區 (System/Lock) -->
+        <div class="w-full md:w-1/2 h-full relative flex items-center justify-center perspective-container">
+            <!-- 門框背景 -->
+            <div class="absolute inset-0 bg-gray-900 rounded-lg border-4 border-gray-700 shadow-2xl"></div>
+            
+            <!-- 內部的暗色空間 (門開後看到的地方) -->
+            <div class="absolute inset-4 bg-black rounded flex items-center justify-center overflow-hidden">
+                <div id="success-message" class="opacity-0 transition-opacity duration-500 delay-500 text-green-400 font-mono text-center">
+                    <div class="text-4xl mb-2">ACCESS<br>GRANTED</div>
+                    <div class="text-xs border-t border-green-800 pt-2 mt-2">SYSTEM UNLOCKED</div>
+                </div>
+                <!-- 網格背景 -->
+                <div class="absolute inset-0 bg-[linear-gradient(rgba(0,255,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,0,0.1)_1px,transparent_1px)] bg-[size:20px_20px] opacity-20"></div>
+            </div>
+
+            <!-- 門 -->
+            <div id="system-door" class="door absolute inset-2 bg-gray-700 border border-gray-600 rounded flex flex-col items-center justify-center shadow-inner z-20">
+                <!-- 鉚釘裝飾 -->
+                <div class="absolute top-4 left-4 w-2 h-2 rounded-full bg-gray-500"></div>
+                <div class="absolute top-4 right-4 w-2 h-2 rounded-full bg-gray-500"></div>
+                <div class="absolute bottom-4 left-4 w-2 h-2 rounded-full bg-gray-500"></div>
+                <div class="absolute bottom-4 right-4 w-2 h-2 rounded-full bg-gray-500"></div>
+
+                <div class="text-xs text-gray-400 font-mono mb-4 tracking-widest">SECURE SYSTEM</div>
+                
+                <!-- 鎖頭 -->
+                <div id="lock-target" class="relative w-32 h-32 rounded-full bg-gray-800 border-4 border-gray-600 flex items-center justify-center lock-glow shadow-lg transition-colors duration-300">
+                    <!-- 鎖狀態燈 -->
+                    <div id="status-light" class="absolute -top-6 w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] transition-all duration-300"></div>
+                    
+                    <!-- 鎖孔圖形 (Updated to match Zigzag key) -->
+                    <svg width="60" height="60" viewBox="0 0 60 60" fill="#111827">
+                        <!-- Outer ring for decoration -->
+                        <circle cx="30" cy="30" r="28" fill="none" stroke="#374151" stroke-width="1" opacity="0.5"/>
+                        <!-- The Hole: Specifically shaped for Key 2 -->
+                        <path d="M10 20 H50 V30 L45 42 L40 30 L35 42 L30 30 L25 42 L20 30 L15 42 L10 30 Z" fill="#030712"/>
+                    </svg>
+                </div>
+            </div>
+            
+            <!-- 門的陰影 -->
+            <div class="door-shadow absolute inset-2 bg-black opacity-0 pointer-events-none z-10"></div>
+        </div>
+
+    </div>
+
+    <!-- 底部訊息 -->
+    <div id="toast" class="fixed bottom-8 bg-gray-800 text-white px-6 py-3 rounded-full shadow-lg transform translate-y-20 transition-transform duration-300 flex items-center gap-2 border border-gray-700">
+        <span id="toast-icon">🔒</span>
+        <span id="toast-text">系統鎖定中</span>
+    </div>
+
+    <script>
+        // 設定
+        const CORRECT_KEY_ID = '2'; // 黃色鑰匙是正確的
+        const keys = document.querySelectorAll('.key-container');
+        const lockTarget = document.getElementById('lock-target');
+        const door = document.getElementById('system-door');
+        const statusLight = document.getElementById('status-light');
+        const successMessage = document.getElementById('success-message');
+        const toast = document.getElementById('toast');
+        const toastText = document.getElementById('toast-text');
+        const toastIcon = document.getElementById('toast-icon');
+
+        let isLocked = true;
+        let activeKey = null;
+        let originalPos = { x: 0, y: 0 };
+        let offset = { x: 0, y: 0 };
+
+        // 簡單的音效合成器 (避免使用外部檔案)
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            if (type === 'success') {
+                // "咔噠" + 開門聲 (高頻琶音)
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(500, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(1000, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.5);
+                
+                // 模擬機械解鎖的低頻聲
+                setTimeout(() => {
+                    const osc2 = audioCtx.createOscillator();
+                    const gain2 = audioCtx.createGain();
+                    osc2.connect(gain2);
+                    gain2.connect(audioCtx.destination);
+                    osc2.type = 'square';
+                    osc2.frequency.setValueAtTime(100, audioCtx.currentTime);
+                    osc2.frequency.linearRampToValueAtTime(50, audioCtx.currentTime + 0.3);
+                    gain2.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain2.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
+                    osc2.start();
+                    osc2.stop(audioCtx.currentTime + 0.3);
+                }, 100);
+
+            } else if (type === 'error') {
+                // 錯誤的 "嗡嗡" 聲
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
+                oscillator.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 0.2);
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.3);
+            }
+        }
+
+        function showToast(msg, icon) {
+            toastText.textContent = msg;
+            toastIcon.textContent = icon;
+            toast.classList.remove('translate-y-20');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20');
+            }, 2000);
+        }
+
+        // 拖曳邏輯
+        keys.forEach(key => {
+            key.addEventListener('mousedown', startDrag);
+            key.addEventListener('touchstart', startDrag, { passive: false });
+        });
+
+        function startDrag(e) {
+            if (!isLocked) return; // 已解鎖則無法操作
+
+            e.preventDefault();
+            activeKey = this;
+            
+            // 記錄初始位置以便歸位
+            const rect = activeKey.getBoundingClientRect();
+            originalPos = {
+                x: rect.left,
+                y: rect.top
+            };
+
+            // 計算滑鼠與元素左上角的偏移
+            const clientX = e.clientX || e.touches[0].clientX;
+            const clientY = e.clientY || e.touches[0].clientY;
+            
+            offset.x = clientX - rect.left;
+            offset.y = clientY - rect.top;
+
+            // 設置拖曳樣式
+            activeKey.classList.add('dragging');
+            activeKey.style.position = 'fixed';
+            activeKey.style.width = rect.width + 'px'; // 鎖定寬度防止變形
+            activeKey.style.left = (clientX - offset.x) + 'px';
+            activeKey.style.top = (clientY - offset.y) + 'px';
+
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('touchmove', onDrag, { passive: false });
+            document.addEventListener('mouseup', endDrag);
+            document.addEventListener('touchend', endDrag);
+        }
+
+        function onDrag(e) {
+            if (!activeKey) return;
+            e.preventDefault();
+
+            const clientX = e.clientX || e.touches[0].clientX;
+            const clientY = e.clientY || e.touches[0].clientY;
+
+            activeKey.style.left = (clientX - offset.x) + 'px';
+            activeKey.style.top = (clientY - offset.y) + 'px';
+
+            // 簡單的碰撞提示 (Hover effect)
+            const keyRect = activeKey.getBoundingClientRect();
+            const lockRect = lockTarget.getBoundingClientRect();
+
+            if (isColliding(keyRect, lockRect)) {
+                lockTarget.parentElement.classList.add('valid-hover');
+            } else {
+                lockTarget.parentElement.classList.remove('valid-hover');
+            }
+        }
+
+        function endDrag(e) {
+            if (!activeKey) return;
+
+            document.removeEventListener('mousemove', onDrag);
+            document.removeEventListener('touchmove', onDrag);
+            document.removeEventListener('mouseup', endDrag);
+            document.removeEventListener('touchend', endDrag);
+
+            const keyRect = activeKey.getBoundingClientRect();
+            const lockRect = lockTarget.getBoundingClientRect();
+            const keyId = activeKey.getAttribute('data-id');
+
+            // 檢查是否放置在鎖上
+            if (isColliding(keyRect, lockRect)) {
+                handleUnlockAttempt(keyId, lockRect);
+            } else {
+                resetKey(activeKey);
+            }
+            
+            lockTarget.parentElement.classList.remove('valid-hover');
+        }
+
+        function isColliding(rect1, rect2) {
+            return !(rect1.right < rect2.left || 
+                     rect1.left > rect2.right || 
+                     rect1.bottom < rect2.top || 
+                     rect1.top > rect2.bottom);
+        }
+
+        function handleUnlockAttempt(keyId, lockRect) {
+            if (keyId === CORRECT_KEY_ID) {
+                // 正確
+                unlockSystem(lockRect);
+            } else {
+                // 錯誤
+                rejectSystem();
+            }
+        }
+
+        function unlockSystem(lockRect) {
+            // 吸附動畫：將鑰匙移到鎖孔正中央
+            // 注意：這裡是簡化計算，實際會更複雜
+            const centerX = lockRect.left + (lockRect.width / 2) - (activeKey.offsetWidth / 2);
+            const centerY = lockRect.top + (lockRect.height / 2) - (activeKey.offsetHeight / 2);
+
+            activeKey.style.transition = 'all 0.3s ease-out';
+            activeKey.style.left = centerX + 'px';
+            activeKey.style.top = centerY + 'px';
+
+            // 播放聲音與轉動動畫
+            setTimeout(() => {
+                playSound('success');
+                activeKey.classList.add('turning');
+                
+                // 狀態燈變綠
+                statusLight.classList.replace('bg-red-500', 'bg-green-500');
+                statusLight.classList.replace('shadow-[0_0_8px_rgba(239,68,68,0.8)]', 'shadow-[0_0_15px_rgba(34,197,94,1)]');
+
+                // 開門
+                setTimeout(() => {
+                    door.classList.add('open');
+                    successMessage.classList.remove('opacity-0');
+                    showToast('驗證成功：Interface 符合 System 規範', '✅');
+                    isLocked = false; // 禁止再次拖曳
+                    
+                    // 讓鑰匙消失或留在鎖上 (這裡選擇漸隱)
+                    activeKey.style.opacity = '0';
+                }, 500);
+            }, 300);
+        }
+
+        function rejectSystem() {
+            playSound('error');
+            
+            // 震動回饋
+            activeKey.classList.add('shake-animation');
+            lockTarget.classList.add('shake-animation');
+            
+            // 燈光閃爍
+            const originalColor = statusLight.className;
+            statusLight.style.backgroundColor = '#fff';
+            setTimeout(() => statusLight.style.backgroundColor = '', 100);
+
+            showToast('存取拒絕：Interface 不相容', '⚠️');
+
+            setTimeout(() => {
+                activeKey.classList.remove('shake-animation');
+                lockTarget.classList.remove('shake-animation');
+                resetKey(activeKey);
+                activeKey = null;
+            }, 500);
+        }
+
+        function resetKey(keyElement) {
+            keyElement.classList.remove('dragging');
+            keyElement.style.transition = 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)'; // 彈性歸位
+            keyElement.style.position = '';
+            keyElement.style.left = '';
+            keyElement.style.top = '';
+            keyElement.style.width = '';
+            activeKey = null;
+        }
+
+    </script>
+</body>
+</html>
